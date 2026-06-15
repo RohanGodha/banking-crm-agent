@@ -313,6 +313,8 @@ python -m venv .venv
 .venv\Scripts\activate                # Windows
 # source .venv/bin/activate           # macOS/Linux
 pip install -r requirements.txt
+# Optional — full dense+BM25 hybrid RAG (otherwise BM25-only fallback is used):
+# pip install -r requirements-rag.txt
 $env:PYTHONPATH = "."                  # Windows PS
 # export PYTHONPATH=.                  # macOS/Linux
 uvicorn app.main:app --reload --port 8000
@@ -363,7 +365,7 @@ Both scripts run end-to-end against the mock LLM with seeded data and assert the
 | Layer    | Service           | Notes                                                                                       |
 | -------- | ----------------- | ------------------------------------------------------------------------------------------- |
 | Frontend | Vercel            | Connect repo, set `VITE_API_URL`, deploy. `vercel.json` already configured.                 |
-| Backend  | Render Web Service (Free) | Use `render.yaml` blueprint; set env vars in dashboard. 1 GB disk mounted at `/data`.  |
+| Backend  | Render Web Service (Free) | Use `render.yaml` blueprint; set env vars in dashboard. Ephemeral FS — `bootstrap()` reseeds deterministically on each boot. |
 | Keep-alive | cron-job.org    | Hit `https://<your-render>.onrender.com/healthz` every 10 min.                              |
 | Warehouse | Databricks Free Edition | Follow `databricks/README.md`. Optional — SQLite fallback ensures nothing breaks. |
 | LLM      | Google AI Studio + Groq | Both have generous free tiers. Mock fallback if both are unset.                       |
