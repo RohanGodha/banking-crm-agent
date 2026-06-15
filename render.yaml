@@ -1,0 +1,45 @@
+# Render blueprint — deploys the backend as a free Web Service with a 1 GB persistent disk.
+# The frontend is deployed to Vercel separately (see frontend/vercel.json).
+
+services:
+  - type: web
+    name: banking-crm-agent
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_PASSWORD
+        sync: false        # set in dashboard
+      - key: APP_CORS_ORIGINS
+        sync: false        # e.g. https://banking-crm-agent.vercel.app
+      - key: LOG_LEVEL
+        value: INFO
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DATABRICKS_HOST
+        sync: false
+      - key: DATABRICKS_HTTP_PATH
+        sync: false
+      - key: DATABRICKS_TOKEN
+        sync: false
+      - key: SQLITE_PATH
+        value: /data/app.db
+      - key: CHROMA_DIR
+        value: /data/chroma
+      - key: SELF_PING_URL
+        sync: false        # e.g. https://banking-crm-agent.onrender.com/healthz
+      - key: SELF_PING_INTERVAL_SECONDS
+        value: "600"
+    disk:
+      name: bca-data
+      mountPath: /data
+      sizeGB: 1

@@ -1,0 +1,53 @@
+# Transparent weights for the heuristic scorers.
+# Tune these without touching code. Values are documented in docs/ai-patterns.md.
+
+value:
+  # Each weight applies to a z-scored feature. Sum need not equal 1; the
+  # composite is normalised in code.
+  balance_z:       0.40
+  income_z:        0.30
+  tenure_z:        0.20
+  txn_velocity_z:  0.10
+
+propensity:
+  # Per-product propensity weights.
+  PROD-LOAN-PL:
+    salary_credit_trend:     0.20
+    recent_large_debit_signal: 0.20
+    no_existing_loan_bonus:  0.15
+    emi_to_income_ratio:     -0.20    # higher = bad
+    age_band_fit:            0.10
+    balance_buffer:          0.15
+
+  PROD-LOAN-OD:
+    salary_credit_dropping:  0.30
+    existing_emi_present:    0.20
+    interaction_stress_signal: 0.20
+    balance_buffer_low:      0.15
+    tenure_long:             0.15
+
+  PROD-CARD-PREM:
+    no_card_held:            0.25
+    premium_merchant_spend:  0.30
+    upi_velocity:            0.20
+    age_under_45:            0.10
+    income_above_75k:        0.15
+
+  PROD-INV-SIP:
+    idle_surplus:            0.30
+    no_mf_holding:           0.25
+    risk_appetite_med_high:  0.15
+    age_under_45:            0.15
+    income_above_75k:        0.15
+
+  PROD-LOAN-HL:
+    income_above_50k:        0.30
+    age_band_fit:            0.20
+    no_home_loan:            0.30
+    balance_buffer:          0.20
+
+  PROD-CARD-CB:
+    no_card_held:            0.30
+    upi_velocity:            0.25
+    income_above_25k:        0.20
+    age_band_fit:            0.25

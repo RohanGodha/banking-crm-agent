@@ -1,0 +1,17 @@
+[project]
+name = "banking-crm-agent"
+version = "0.1.0"
+description = "Agentic AI Copilot for Banking RMs — identifies high-value customers and drafts personalized outreach."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP", "C4"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

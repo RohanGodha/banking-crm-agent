@@ -1,0 +1,32 @@
+name: backend-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+  pull_request:
+    paths: ['backend/**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install
+        run: |
+          pip install -r requirements.txt
+      - name: Lint
+        run: ruff check app
+      - name: Smoke + agent E2E (mock LLM)
+        env:
+          PYTHONPATH: .
+        run: |
+          python tests/test_smoke.py
+          python tests/test_agent_e2e.py

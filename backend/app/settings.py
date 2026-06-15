@@ -1,0 +1,88 @@
+"""Centralised application settings backed by pydantic-settings.
+
+All configuration must flow through this module — no scattered os.environ reads.
+"""
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # --- App ---
+    app_name: str = "banking-crm-agent"
+    app_env: str = "development"
+    app_password: str = "shared"
+    app_cors_origins: str = "http://localhost:5173"
+    log_level: str = "INFO"
+
+    # --- LLM ---
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash-exp"
+    gemini_embed_model: str = "text-embedding-004"
+
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+
+    # --- Data ---
+    databricks_host: str = ""
+    databricks_http_path: str = ""
+    databricks_token: str = ""
+    databricks_catalog: str = "banking_crm"
+    databricks_schema: str = "core"
+    databricks_timeout_seconds: float = 5.0
+
+    sqlite_path: str = "./data/app.db"
+    chroma_dir: str = "./data/chroma"
+
+    # --- Agent ---
+    agent_max_iterations: int = 6
+    agent_top_k_candidates: int = 10
+    agent_tool_timeout_seconds: float = 15.0
+
+    # --- Keep-alive ---
+    self_ping_url: str = ""
+    self_ping_interval_seconds: int = 600
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.app_cors_origins.split(",") if o.strip()]
+
+    @property
+    def sqlite_abs_path(self) -> Path:
+        path = Path(self.sqlite_path)
+        if not path.is_absolute():
+            path = (Path(__file__).resolve().parent.parent / path).resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def chroma_abs_dir(self) -> Path:
+        path = Path(self.chroma_dir)
+        if not path.is_absolute():
+            path = (Path(__file__).resolve().parent.parent / path).resolve()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def databricks_enabled(self) -> bool:
+        return bool(self.databricks_host and self.databricks_token and self.databricks_http_path)
+
+    @property
+    def has_any_llm(self) -> bool:
+        return bool(self.gemini_api_key or self.groq_api_key)
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    return Settings()
