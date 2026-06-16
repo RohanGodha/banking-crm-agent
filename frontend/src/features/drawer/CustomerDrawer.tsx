@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { X, Phone, MapPin, Briefcase, ShieldCheck, ListChecks, Wallet, Calendar, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
 import { WhatsAppPreview } from './WhatsAppPreview';
 import { ScoreBreakdownChart } from './ScoreBreakdownChart';
+import { D3Loader } from '@/features/trace/D3Loader';
 
 export function CustomerDrawer({ customerId }: { customerId: string }) {
   const close = useUi((s) => () => s.setSelectedCustomerId(null));
@@ -243,6 +244,9 @@ function Section({
 function Skeleton() {
   return (
     <div className="space-y-4">
+      <div className="flex justify-center py-4">
+        <D3Loader size={32} label="Loading customer 360…" />
+      </div>
       <div className="h-24 rounded-lg bg-bg-soft animate-pulse" />
       <div className="h-32 rounded-lg bg-bg-soft animate-pulse" />
       <div className="h-40 rounded-lg bg-bg-soft animate-pulse" />

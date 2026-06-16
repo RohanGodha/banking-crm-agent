@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useUi } from '@/store/uiStore';
 import { useAgentStream } from '@/hooks/useAgentStream';
 import { TracePanel } from '@/features/trace/TracePanel';
+import { AgentFlowD3 } from '@/features/trace/AgentFlowD3';
+import { D3Loader } from '@/features/trace/D3Loader';
 import { ArrowUp, Sparkles, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -45,17 +47,27 @@ export function ChatPane() {
           ),
         )}
 
+        {/* Live D3 pipeline visual while the agent is reasoning */}
+        {ui.isStreaming && ui.events.length > 0 && (
+          <div className="rounded-2xl rounded-tl-sm bg-bg-card border border-border px-3 py-2 animate-fade-in">
+            <div className="flex items-center gap-2 mb-1 px-1">
+              <D3Loader size={20} />
+              <span className="text-xs text-text-muted">Agent is working…</span>
+            </div>
+            <AgentFlowD3 />
+          </div>
+        )}
+
         {/* Trace panel — the current run's reasoning (events cleared each run) */}
         {ui.events.length > 0 && <TracePanel />}
 
         {/* Live assistant preview while streaming (before the final turn is committed) */}
         {ui.isStreaming && ui.summary && <AssistantBubble text={ui.summary} />}
 
-        {/* Thinking indicator while streaming with no summary yet */}
-        {ui.isStreaming && !ui.summary && (
-          <div className="flex items-center gap-2 text-xs text-text-muted animate-fade-in">
-            <Sparkles size={12} className="text-accent-glow animate-pulse-dot" />
-            <span>Working through it…</span>
+        {/* Initial thinking indicator (before any event arrives) */}
+        {ui.isStreaming && ui.events.length === 0 && (
+          <div className="animate-fade-in">
+            <D3Loader size={24} label="Thinking…" />
           </div>
         )}
 
