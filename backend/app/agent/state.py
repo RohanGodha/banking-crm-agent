@@ -74,6 +74,7 @@ class DraftRecord(BaseModel):
     product_id: str
     message: str
     compliance: dict[str, Any] = Field(default_factory=dict)
+    llm_route: str = ""
 
 
 class AgentState(BaseModel):

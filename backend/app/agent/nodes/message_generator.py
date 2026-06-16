@@ -37,6 +37,7 @@ async def _draft_for(state: AgentState, candidate) -> DraftRecord | None:
         product_id=candidate.recommended_product_id,
         message=data.get("message", ""),
         compliance=data.get("compliance", {}),
+        llm_route=data.get("llm_route", ""),
     )
     state.emit(TraceEvent(
         event="draft",
