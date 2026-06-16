@@ -67,6 +67,9 @@ export interface CandidateRecord {
   top_features: ScoreBreakdown[];
   rationale: string;
   citations: string[];
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  escalate?: boolean;
+  churn_risk?: boolean;
 }
 
 export interface DraftRecord {

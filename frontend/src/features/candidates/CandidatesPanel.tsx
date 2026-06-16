@@ -1,7 +1,7 @@
 import { useUi } from '@/store/uiStore';
 import { inr, pct, truncate } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { MapPin, ShoppingBag, Zap, Users } from 'lucide-react';
+import { MapPin, ShoppingBag, Zap, Users, AlertTriangle } from 'lucide-react';
 
 const SEGMENT_LABEL: Record<string, string> = {
   hnw: 'HNW',
@@ -64,9 +64,15 @@ export function CandidatesPanel() {
               <ScoreRing score={c.composite_score} />
             </div>
 
-            <div className="mt-2 flex items-center gap-2 text-[11px]">
+            <div className="mt-2 flex items-center gap-2 text-[11px] flex-wrap">
               <ShoppingBag size={11} className="text-accent-glow" />
               <span className="text-text">{c.recommended_product_name}</span>
+              {c.escalate && (
+                <span className="badge-warn" title="Negative sentiment / churn risk — priority human attention">
+                  <AlertTriangle size={10} /> {c.churn_risk ? 'churn risk' : 'escalate'}
+                </span>
+              )}
+              {c.sentiment === 'positive' && <span className="badge-pos">positive</span>}
             </div>
 
             {c.top_features?.[0] && (

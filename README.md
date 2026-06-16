@@ -160,6 +160,11 @@ Every message first hits an **intent gate** (heuristic + LLM `INTENT_PROMPT`) th
 
 All prompts live in a single versioned registry: `app/agent/prompts.py` (`SYSTEM_PROMPT`, `INTENT_PROMPT`, `PLANNER_PROMPT`/`MASTER_AGENT_PROMPT`, `FOLLOW_UP_PROMPT`, `CRITIC_PROMPT`, `SYNTHESIZER_PROMPT`, `WHATSAPP_PROMPT`, `FAQ_PROMPT`, `GUARDRAIL_PROMPT`). Conversation history is loaded per session so `follow_up` refinements ("now only Bangalore, warmer tone") are rewritten into standalone tasks. Pattern adapted from a production VFS RAG bot (query-rewriting + intent routing + grounded FAQ) and an insurance multi-agent classifier.
 
+### 4.0b Sentiment / churn-risk escalation + multilingual outreach
+
+- **Sentiment & churn-risk**: each candidate's interaction notes are analysed (rule-based, offline-safe) and tagged `positive | neutral | negative` with an `escalate` flag for churn-risk customers — surfaced as a badge so the RM prioritises retention calls. (Pattern adapted from the VFS bot's sentiment/live-agent routing.)
+- **Multilingual drafts**: the planner detects a requested language ("…in Hindi") and the WhatsApp generator writes the entire message in that language (English default). Fits Indian multi-lingual outreach.
+
 ### 4.1 Plan-and-Execute with Critic-in-the-loop
 
 - **Pattern:** *Planner emits a typed JSON plan → Executor runs each step → Critic decides pass/replan.*

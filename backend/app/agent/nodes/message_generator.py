@@ -16,6 +16,7 @@ async def _draft_for(state: AgentState, candidate) -> DraftRecord | None:
             "customer_id": candidate.customer_id,
             "product_id": candidate.recommended_product_id,
             "tone": (state.plan.tone if state.plan else "professional"),
+            "language": (state.plan.language if state.plan else "English"),
             "top_features": [f.model_dump() for f in feats],
             "rm_name": state.rm_name,
         },

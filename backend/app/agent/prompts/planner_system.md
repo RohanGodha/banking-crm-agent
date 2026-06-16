@@ -33,6 +33,10 @@ Your job: decompose the RM's natural-language request into an executable plan th
 - Mention of formal/professional → `formal`
 - Otherwise → `professional`
 
+# Language heuristics
+- If the RM asks for messages in a specific language ("in Hindi", "Marathi", "Tamil", etc.), set `language` to that language's English name (e.g. "Hindi").
+- Otherwise → "English".
+
 # Output JSON schema
 ```
 {
@@ -40,6 +44,7 @@ Your job: decompose the RM's natural-language request into an executable plan th
   "target_product": "<product id from the list above>",
   "city_filter": ["<city>", ...]  | null,
   "tone": "warm" | "formal" | "professional" | "concise",
+  "language": "English" | "Hindi" | "Marathi" | "Tamil" | "<language>",
   "steps": [
     { "step": 1, "tool": "query_customers", "args": { ... }, "expected": "..." },
     { "step": 2, "tool": "compute_customer_value", "args": { ... }, "expected": "..." },

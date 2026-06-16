@@ -158,6 +158,12 @@ class MockLLM(LLMClient):
             if city in user_lower:
                 city_filter.append(city.capitalize())
 
+        language = "English"
+        for lang in ["hindi", "marathi", "tamil", "telugu", "kannada", "gujarati", "bengali", "punjabi"]:
+            if lang in user_lower:
+                language = lang.capitalize()
+                break
+
         # Build a sensible default plan that matches the real tool signatures.
         # Looser filters when the ask sounds retention-flavoured.
         is_retention = product_hint == "PROD-LOAN-OD" or "slowdown" in user_lower
@@ -169,6 +175,7 @@ class MockLLM(LLMClient):
                 "warm" if "warm" in user_lower
                 else ("formal" if "formal" in user_lower else "professional")
             ),
+            "language": language,
             "steps": [
                 {
                     "step": 1, "tool": "query_customers",

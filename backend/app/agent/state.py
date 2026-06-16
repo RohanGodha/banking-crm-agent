@@ -21,6 +21,7 @@ class Plan(BaseModel):
     target_product: str | None = None
     city_filter: list[str] | None = None
     tone: str = "professional"
+    language: str = "English"          # target language for outreach drafts
     steps: list[PlanStep] = Field(default_factory=list)
 
 
@@ -62,6 +63,10 @@ class CandidateRecord(BaseModel):
     top_features: list[dict[str, Any]]
     rationale: str
     citations: list[str] = Field(default_factory=list)
+    # Sentiment / churn-risk from interaction notes
+    sentiment: str = "neutral"          # positive | neutral | negative
+    escalate: bool = False              # flag for priority human attention
+    churn_risk: bool = False
 
 
 class DraftRecord(BaseModel):

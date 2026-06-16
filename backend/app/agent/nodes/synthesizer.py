@@ -100,6 +100,21 @@ async def run_synthesizer(state: AgentState) -> AgentState:
     from app.settings import get_settings
     top_k = get_settings().agent_top_k_candidates
     candidates = candidates[:top_k]
+
+    # Sentiment + churn-risk enrichment over each candidate's interaction notes.
+    from app.infrastructure.datasource import get_datasource
+    from app.scoring.sentiment import analyze_sentiment
+    ds = get_datasource()
+    try:
+        inter_map = await ds.get_interactions_bulk([c.customer_id for c in candidates])
+    except Exception:  # noqa: BLE001
+        inter_map = {}
+    for c in candidates:
+        s = analyze_sentiment(inter_map.get(c.customer_id, []))
+        c.sentiment = s["sentiment"]
+        c.escalate = s["escalate"]
+        c.churn_risk = s["churn_risk"]
+
     state.candidates = candidates
 
     # Emit candidate events progressively for the UI

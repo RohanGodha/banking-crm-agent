@@ -56,6 +56,7 @@ def _coerce_plan(raw: dict[str, Any]) -> Plan:
         target_product=raw.get("target_product"),
         city_filter=raw.get("city_filter") or None,
         tone=raw.get("tone", "professional"),
+        language=raw.get("language", "English") or "English",
         steps=steps,
     )
 
@@ -126,7 +127,7 @@ async def run_planner(state: AgentState) -> AgentState:
     state.plan = plan
     state.emit(TraceEvent(
         event="plan",
-        data={"plan": plan.model_dump(), "intent": plan.intent, "target_product": plan.target_product},
+        data={"plan": plan.model_dump(), "intent": plan.intent, "target_product": plan.target_product, "language": plan.language},
         llm_route=resp.meta.get("route_used", resp.provider),
         latency_ms=resp.latency_ms,
     ))

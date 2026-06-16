@@ -16,6 +16,7 @@ class GenerateWhatsAppIn(BaseModel):
     customer_id: str
     product_id: str
     tone: str = Field(default="professional", description="warm | formal | professional | concise")
+    language: str = Field(default="English", description="Target language, e.g. English, Hindi, Marathi, Tamil")
     top_features: list[ScoreBreakdown] = Field(default_factory=list)
     rm_name: str = "Rohan"
 
@@ -32,10 +33,15 @@ class GenerateWhatsAppOut(BaseModel):
 from app.agent.prompts import WHATSAPP_PROMPT as _SYSTEM_PROMPT
 
 
-def _user_prompt(customer: dict[str, Any], product: dict[str, Any], top_features: list[ScoreBreakdown], tone: str, rm_name: str) -> str:
+def _user_prompt(customer: dict[str, Any], product: dict[str, Any], top_features: list[ScoreBreakdown], tone: str, rm_name: str, language: str = "English") -> str:
     feat_lines = "\n".join(
         f"- {f.feature}: contribution={f.contribution:+.2f}  ({f.rationale})"
         for f in top_features[:3]
+    )
+    lang_line = (
+        "Language: English\n" if language.lower() == "english"
+        else f"Language: {language} — write the ENTIRE message in {language} "
+             f"(use the {language} script; keep the customer's name as-is).\n"
     )
     return (
         f"Customer:\n"
@@ -49,6 +55,7 @@ def _user_prompt(customer: dict[str, Any], product: dict[str, Any], top_features
         f"  description: {product.get('description')}\n"
         f"Top signals:\n{feat_lines or '  (none)'}\n"
         f"Tone: {tone}\n"
+        f"{lang_line}"
         f"RM: {rm_name}\n"
         f"\nWrite the WhatsApp message now."
     )
@@ -87,7 +94,7 @@ async def generate_whatsapp_message(args: GenerateWhatsAppIn) -> GenerateWhatsAp
         kind="generation",
         messages=[
             LLMMessage(role="system", content=_SYSTEM_PROMPT),
-            LLMMessage(role="user", content=_user_prompt(customer, product, args.top_features, args.tone, args.rm_name)),
+            LLMMessage(role="user", content=_user_prompt(customer, product, args.top_features, args.tone, args.rm_name, args.language)),
         ],
         temperature=0.6,
         max_tokens=220,

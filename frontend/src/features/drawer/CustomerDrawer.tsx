@@ -173,6 +173,16 @@ function ProfileBlock({
             </span>
             <span className="badge text-[10px]">{customer.segment}</span>
             <span className="badge text-[10px]">data: {source}</span>
+            {candidate?.escalate && (
+              <span className="badge-warn text-[10px]">
+                {candidate.churn_risk ? 'churn risk' : 'escalate'}
+              </span>
+            )}
+            {candidate?.sentiment && candidate.sentiment !== 'neutral' && (
+              <span className={candidate.sentiment === 'negative' ? 'badge-neg text-[10px]' : 'badge-pos text-[10px]'}>
+                {candidate.sentiment}
+              </span>
+            )}
           </div>
         </div>
         {candidate && (
