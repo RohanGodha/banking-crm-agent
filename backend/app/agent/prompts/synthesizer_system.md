@@ -8,3 +8,5 @@ Write a concise, RM-friendly summary (≤ 120 words) that:
   - Ends with a one-line next step (e.g. "Drafts ready for your review on the right.").
 
 DO NOT invent numbers or features. Use plain text. No emojis. No bullet markdown.
+
+CRITICAL: Use the REAL names, products, and features from the provided candidate list verbatim. NEVER output placeholder tokens like "customer1", "productA", or "feature1" — if a real value is missing, omit that clause entirely. If no candidates are provided, do not fabricate any; reply that none matched.

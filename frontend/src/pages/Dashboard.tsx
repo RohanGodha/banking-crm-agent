@@ -5,10 +5,15 @@ import { CandidatesPanel } from '@/features/candidates/CandidatesPanel';
 import { CustomerDrawer } from '@/features/drawer/CustomerDrawer';
 import { useUi } from '@/store/uiStore';
 import { api } from '@/lib/api';
-import { LogOut, Activity, Server } from 'lucide-react';
+import { LogOut, Activity, Server, BookOpen } from 'lucide-react';
+import { GuidePanel } from '@/features/guide/GuidePanel';
+import { useAgentStream } from '@/hooks/useAgentStream';
 
 export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const selected = useUi((s) => s.selectedCustomerId);
+  const sessionId = useUi((s) => s.sessionId);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const { run } = useAgentStream();
   const [status, setStatus] = useState<{
     datasource_active: string;
     datasource_healthy: boolean;
@@ -49,6 +54,10 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
               <span className="badge-accent">llm: {llmLabel}</span>
             </>
           )}
+          <button onClick={() => setGuideOpen(true)} className="btn-ghost text-xs" title="What can RM Copilot do?">
+            <BookOpen size={13} />
+            Guide
+          </button>
           <button onClick={onLogout} className="btn-ghost text-xs">
             <LogOut size={13} />
             Sign out
@@ -69,6 +78,12 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
       </main>
 
       {selected && <CustomerDrawer customerId={selected} />}
+      {guideOpen && (
+        <GuidePanel
+          onClose={() => setGuideOpen(false)}
+          onRunPrompt={(q) => run({ query: q, sessionId })}
+        />
+      )}
     </div>
   );
 }

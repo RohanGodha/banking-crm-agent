@@ -84,4 +84,13 @@ export const api = {
       body: JSON.stringify({ draft_ids: draftIds }),
     }),
   listTools: () => jfetch<{ tools: any[]; count: number }>('/tools'),
+  capabilities: () => jfetch<{
+    domain: { name: string; persona: string; scope: string; out_of_scope: string };
+    capabilities: { title: string; desc: string }[];
+    products: { id: string; name: string; category: string }[];
+    example_prompts: string[];
+    faq_count: number;
+    status: { datasource: string; llm: string; rag: string };
+  }>('/meta/capabilities'),
+  faqs: () => jfetch<{ count: number; categories: Record<string, { q: string; a: string }[]> }>('/meta/faqs'),
 };
