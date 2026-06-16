@@ -47,6 +47,7 @@ async def _draft_for(state: AgentState, candidate) -> DraftRecord | None:
             "message": rec.message,
             "compliance": rec.compliance,
             "llm_route": data.get("llm_route"),
+            "fallback_reason": data.get("fallback_reason", ""),
         },
         llm_route=data.get("llm_route"),
         latency_ms=data.get("latency_ms"),

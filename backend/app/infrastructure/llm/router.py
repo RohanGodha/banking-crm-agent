@@ -85,6 +85,7 @@ class LLMRouter:
         json_mode: bool = False,
     ) -> LLMResponse:
         last_err: Exception | None = None
+        failures: list[str] = []  # human-readable trail of why each provider was skipped
         order = self._order(kind)
         for client in order:
             # Real providers get one retry (with a short backoff) before we fall
@@ -100,14 +101,21 @@ class LLMRouter:
                     )
                     resp.meta["route_used"] = client.name
                     resp.meta["route_kind"] = kind
+                    # When we landed on mock despite real providers existing,
+                    # surface WHY so the trace/API explains the degradation.
+                    if client.name == "mock" and failures:
+                        resp.meta["fallback_reason"] = " | ".join(failures)
+                        logger.warning("Routed to MOCK for kind=%s — reason: %s", kind, resp.meta["fallback_reason"])
                     return resp
                 except Exception as e:  # noqa: BLE001
                     last_err = e
+                    msg = f"{client.name}:{e.__class__.__name__}: {str(e)[:160]}"
                     if attempt + 1 < attempts:
                         import asyncio
                         await asyncio.sleep(0.8 * (attempt + 1))
                         logger.info("%s.complete retry %d (%s): %s", client.name, attempt + 1, e.__class__.__name__, e)
                     else:
+                        failures.append(msg)
                         logger.warning("%s.complete failed (%s): %s — falling through.", client.name, e.__class__.__name__, e)
         # Final safety: always return *something* (mock never fails)
         raise RuntimeError(f"All LLM providers failed: {last_err}")

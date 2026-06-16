@@ -28,6 +28,7 @@ class GenerateWhatsAppOut(BaseModel):
     compliance: dict[str, Any]
     llm_route: str
     latency_ms: int
+    fallback_reason: str = ""  # populated when generation degraded to mock
 
 
 from app.agent.prompts import WHATSAPP_PROMPT as _SYSTEM_PROMPT
@@ -117,4 +118,5 @@ async def generate_whatsapp_message(args: GenerateWhatsAppIn) -> GenerateWhatsAp
         compliance=report,
         llm_route=resp.meta.get("route_used", resp.provider),
         latency_ms=int((time.perf_counter() - started) * 1000),
+        fallback_reason=resp.meta.get("fallback_reason", ""),
     )
