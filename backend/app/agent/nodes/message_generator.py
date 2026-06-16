@@ -1,4 +1,9 @@
-"""MessageGenerator node — parallel WhatsApp drafts via Groq (volume), grounded."""
+"""MessageGenerator node — concurrency-limited WhatsApp drafts (grounded).
+
+Free-tier LLMs have per-minute request limits. Firing 10 drafts at once can trip
+429s and silently fall through to the offline mock. We cap concurrency with a
+semaphore so the burst stays under the rate limit while remaining fast.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -6,6 +11,9 @@ import asyncio
 from app.agent.state import AgentState, DraftRecord, TraceEvent
 from app.application.tool_registry import invoke_tool
 from app.domain import ScoreBreakdown
+
+# Max simultaneous draft generations (keeps us under Groq/Gemini free RPM).
+_MAX_CONCURRENCY = 4
 
 
 async def _draft_for(state: AgentState, candidate) -> DraftRecord | None:
@@ -49,7 +57,12 @@ async def run_message_generator(state: AgentState) -> AgentState:
     if not state.candidates:
         state.emit(TraceEvent(event="info", data={"msg": "no candidates → skipping drafts"}))
         return state
-    tasks = [_draft_for(state, c) for c in state.candidates]
-    results = await asyncio.gather(*tasks)
+    sem = asyncio.Semaphore(_MAX_CONCURRENCY)
+
+    async def _bounded(c):
+        async with sem:
+            return await _draft_for(state, c)
+
+    results = await asyncio.gather(*[_bounded(c) for c in state.candidates])
     state.drafts = [r for r in results if r is not None]
     return state
