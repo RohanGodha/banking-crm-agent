@@ -1,10 +1,16 @@
 import { create } from 'zustand';
 import type { CandidateRecord, DraftRecord, TraceEvent } from '@/lib/types';
 
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 interface UiState {
   sessionId: string | null;
   rmQuery: string;
   isStreaming: boolean;
+  transcript: ChatTurn[];
   events: TraceEvent[];
   candidates: CandidateRecord[];
   drafts: DraftRecord[];
@@ -14,6 +20,7 @@ interface UiState {
 
   setSessionId(id: string | null): void;
   setRmQuery(q: string): void;
+  addTurn(role: 'user' | 'assistant', content: string): void;
   startStream(): void;
   pushEvent(ev: TraceEvent): void;
   pushCandidate(c: CandidateRecord): void;
@@ -29,6 +36,7 @@ export const useUi = create<UiState>((set) => ({
   sessionId: null,
   rmQuery: '',
   isStreaming: false,
+  transcript: [],
   events: [],
   candidates: [],
   drafts: [],
@@ -38,6 +46,7 @@ export const useUi = create<UiState>((set) => ({
 
   setSessionId: (id) => set({ sessionId: id }),
   setRmQuery: (q) => set({ rmQuery: q }),
+  addTurn: (role, content) => set((s) => ({ transcript: [...s.transcript, { role, content }] })),
   startStream: () =>
     set({
       isStreaming: true,
@@ -71,6 +80,7 @@ export const useUi = create<UiState>((set) => ({
   finishStream: () => set({ isStreaming: false }),
   resetForNewQuery: () =>
     set({
+      transcript: [],
       events: [],
       candidates: [],
       drafts: [],

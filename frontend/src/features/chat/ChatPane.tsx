@@ -32,30 +32,30 @@ export function ChatPane() {
     <div className="h-full flex flex-col">
       {/* Conversation / trace area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-        {/* User message */}
-        {ui.rmQuery && (
-          <div className="flex justify-end animate-fade-in">
-            <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-accent/15 border border-accent-soft/40 px-4 py-2.5 text-sm text-text">
-              {ui.rmQuery}
+        {/* Full conversation transcript */}
+        {ui.transcript.map((turn, i) =>
+          turn.role === 'user' ? (
+            <div key={i} className="flex justify-end animate-fade-in">
+              <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-accent/15 border border-accent-soft/40 px-4 py-2.5 text-sm text-text whitespace-pre-wrap">
+                {turn.content}
+              </div>
             </div>
-          </div>
+          ) : (
+            <AssistantBubble key={i} text={turn.content} />
+          ),
         )}
 
-        {/* Trace panel — the agent's reasoning */}
+        {/* Trace panel — the current run's reasoning (events cleared each run) */}
         {ui.events.length > 0 && <TracePanel />}
 
-        {/* Final assistant summary */}
-        {ui.summary && (
-          <div className="flex animate-fade-in">
-            <div className="max-w-[88%] space-y-2">
-              <div className="flex items-center gap-2 text-xs text-text-muted">
-                <Sparkles size={12} className="text-accent-glow" />
-                <span>RM Copilot</span>
-              </div>
-              <div className="rounded-2xl rounded-tl-sm bg-bg-card border border-border px-4 py-3 text-sm leading-relaxed text-text">
-                {ui.summary}
-              </div>
-            </div>
+        {/* Live assistant preview while streaming (before the final turn is committed) */}
+        {ui.isStreaming && ui.summary && <AssistantBubble text={ui.summary} />}
+
+        {/* Thinking indicator while streaming with no summary yet */}
+        {ui.isStreaming && !ui.summary && (
+          <div className="flex items-center gap-2 text-xs text-text-muted animate-fade-in">
+            <Sparkles size={12} className="text-accent-glow animate-pulse-dot" />
+            <span>Working through it…</span>
           </div>
         )}
 
@@ -67,7 +67,7 @@ export function ChatPane() {
         )}
 
         {/* Empty state */}
-        {!ui.rmQuery && !ui.isStreaming && (
+        {ui.transcript.length === 0 && !ui.isStreaming && (
           <EmptyState onPick={(q) => { setInput(q); submit(q); }} />
         )}
       </div>
@@ -108,6 +108,22 @@ export function ChatPane() {
               <ArrowUp size={14} />
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssistantBubble({ text }: { text: string }) {
+  return (
+    <div className="flex animate-fade-in">
+      <div className="max-w-[88%] space-y-2">
+        <div className="flex items-center gap-2 text-xs text-text-muted">
+          <Sparkles size={12} className="text-accent-glow" />
+          <span>RM Copilot</span>
+        </div>
+        <div className="rounded-2xl rounded-tl-sm bg-bg-card border border-border px-4 py-3 text-sm leading-relaxed text-text whitespace-pre-wrap">
+          {text}
         </div>
       </div>
     </div>

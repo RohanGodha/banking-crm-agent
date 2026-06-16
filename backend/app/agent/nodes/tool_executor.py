@@ -54,11 +54,32 @@ def _resolve_one(state: AgentState, ref: str) -> Any:
     return out
 
 
+def _latest_customer_ids(state: AgentState, limit: int = 80) -> list[str]:
+    """Most recent customer id list from query_customers / compute_customer_value."""
+    for tc in reversed(state.tool_calls):
+        if not tc.ok or not isinstance(tc.output, dict):
+            continue
+        if tc.tool == "query_customers":
+            return [c["id"] for c in tc.output.get("customers", [])][:limit]
+        if tc.tool == "compute_customer_value":
+            return [c["customer_id"] for c in tc.output.get("customers", [])][:limit]
+    return []
+
+
 async def execute_step(state: AgentState, step_index: int) -> AgentState:
     if not state.plan or step_index >= len(state.plan.steps):
         return state
     step = state.plan.steps[step_index]
     args = _resolve_placeholders(state, step.args)
+
+    # Robustness: tools that need customer_ids must never run on an empty list
+    # just because the planner phrased a placeholder differently. Backfill from
+    # the most recent customer list produced by an earlier step.
+    if step.tool in {"compute_customer_value", "predict_loan_propensity", "recommend_products"}:
+        cids = args.get("customer_ids")
+        if not cids or not isinstance(cids, list) or len(cids) == 0:
+            args["customer_ids"] = _latest_customer_ids(state)
+
     state.emit(TraceEvent(event="tool_call", data={"step": step.step, "tool": step.tool, "args": args}))
 
     envelope = await invoke_tool(step.tool, args)

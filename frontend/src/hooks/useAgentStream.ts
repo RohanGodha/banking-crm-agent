@@ -30,6 +30,7 @@ export function useAgentStream() {
         return;
       }
       ui.setRmQuery(args.query);
+      ui.addTurn('user', args.query);
       ui.startStream();
 
       const ctrl = new AbortController();
@@ -91,6 +92,7 @@ export function useAgentStream() {
               if (Array.isArray(d.drafts)) {
                 d.drafts.forEach((dr: DraftRecord) => ui.pushDraft(dr));
               }
+              if (d.summary) ui.addTurn('assistant', d.summary);
               ui.finishStream();
             }
             if (eventName === 'error') {

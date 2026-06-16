@@ -106,6 +106,18 @@ async def run_synthesizer(state: AgentState) -> AgentState:
     for c in candidates:
         state.emit(TraceEvent(event="candidate", data=c.model_dump()))
 
+    # No candidates → return a clear, honest message instead of asking the LLM
+    # to summarise an empty list (which previously produced a confusing meta-reply).
+    if not candidates:
+        product = (state.plan.target_product if state.plan else None) or "the requested product"
+        state.final_summary = (
+            f"I couldn't find customers matching that request for {product}. "
+            "Try loosening the criteria — e.g. a different city, a lower balance "
+            "threshold, or a broader segment."
+        )
+        state.emit(TraceEvent(event="synth", data={"summary": state.final_summary, "candidate_count": 0}))
+        return state
+
     # LLM summary
     router = get_llm_router()
     context_for_llm = "\n".join(
