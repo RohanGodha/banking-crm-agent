@@ -57,6 +57,8 @@ export interface CandidateRecord {
   name: string;
   city: string;
   segment: string;
+  monthly_income?: number | null;
+  avg_balance_6m?: number | null;
   value_score: number;
   propensity_score: number;
   composite_score: number;

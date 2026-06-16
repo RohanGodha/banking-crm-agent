@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUi } from '@/store/uiStore';
-import { ChevronDown, ChevronRight, Sparkles, Wrench, CheckCircle2, AlertTriangle, Zap, GitBranch, MessageSquare } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, Wrench, CheckCircle2, AlertTriangle, Zap, GitBranch, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { TraceEvent } from '@/lib/types';
 
@@ -18,7 +18,18 @@ const IconFor: Record<string, React.ReactNode> = {
 export function TracePanel() {
   const events = useUi((s) => s.events);
   const isStreaming = useUi((s) => s.isStreaming);
-  const [open, setOpen] = useState(true);
+  // Collapsed by default. Auto-expand while the agent is actively reasoning,
+  // then auto-collapse when the run finishes — unless the user manually toggled.
+  const [open, setOpen] = useState(false);
+  const userToggled = useRef(false);
+  const wasStreaming = useRef(false);
+
+  useEffect(() => {
+    if (userToggled.current) return;
+    if (isStreaming && !wasStreaming.current) setOpen(true);
+    if (!isStreaming && wasStreaming.current) setOpen(false);
+    wasStreaming.current = isStreaming;
+  }, [isStreaming]);
 
   // Filter out very low-signal events from the visible trace
   const visible = events.filter(
@@ -29,7 +40,8 @@ export function TracePanel() {
     <div className="rounded-2xl rounded-tl-sm bg-bg-card border border-border overflow-hidden animate-fade-in">
       <button
         className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-bg-soft transition-colors"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { userToggled.current = true; setOpen((o) => !o); }}
+        title={open ? 'Hide agent reasoning' : 'Show agent reasoning'}
       >
         <div className="flex items-center gap-2 text-sm">
           <Sparkles size={13} className="text-accent-glow" />
@@ -43,7 +55,10 @@ export function TracePanel() {
             {visible.length} step{visible.length === 1 ? '' : 's'}
           </span>
         </div>
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+          {open ? 'Hide' : 'Show'}
+          {open ? <EyeOff size={14} /> : <Eye size={14} />}
+        </span>
       </button>
       {open && (
         <ul className="px-4 pb-3 pt-1 space-y-1.5">

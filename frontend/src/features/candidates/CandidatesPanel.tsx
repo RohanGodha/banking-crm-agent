@@ -77,7 +77,7 @@ export function CandidatesPanel() {
             )}
 
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
-              <KV k="Income" v={inr(extractIncome(c), { compact: true })} />
+              <KV k="Income" v={inr(c.monthly_income, { compact: true })} />
               <KV k="Value" v={pct(c.value_score)} />
               <KV k="Propensity" v={pct(c.propensity_score)} />
               <KV k="Citations" v={c.citations?.length || 0} />
@@ -119,7 +119,4 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-function extractIncome(c: any): number | null {
-  // We don't get income on the candidate event; the drawer fetches it. Show '—' for now.
-  return null;
-}
+

@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 from app.agent.nodes.critic import run_critic
+from app.agent.nodes.intent import run_intent
 from app.agent.nodes.message_generator import run_message_generator
 from app.agent.nodes.planner import run_planner
 from app.agent.nodes.responder import run_responder
@@ -35,6 +36,16 @@ async def run_agent(state: AgentState) -> AsyncIterator[TraceEvent]:
     _drain(state)
     async for ev in _yield_drain(state):
         yield ev
+
+    # 0. Intent gate — greetings / small talk get a conversational reply, no pipeline.
+    is_task = await run_intent(state)
+    async for ev in _yield_drain(state):
+        yield ev
+    if not is_task:
+        await run_responder(state)
+        async for ev in _yield_drain(state):
+            yield ev
+        return
 
     # 1. Planner
     await run_planner(state)

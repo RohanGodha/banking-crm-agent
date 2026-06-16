@@ -83,6 +83,8 @@ async def run_synthesizer(state: AgentState) -> AgentState:
                 name=cust.get("name", cid),
                 city=cust.get("city", ""),
                 segment=cust.get("segment", ""),
+                monthly_income=cust.get("monthly_income"),
+                avg_balance_6m=cust.get("avg_balance_6m") or cust.get("balance"),
                 value_score=val_score,
                 propensity_score=prop_score,
                 composite_score=composite,

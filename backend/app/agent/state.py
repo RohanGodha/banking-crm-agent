@@ -52,6 +52,8 @@ class CandidateRecord(BaseModel):
     name: str
     city: str
     segment: str
+    monthly_income: float | None = None
+    avg_balance_6m: float | None = None
     value_score: float
     propensity_score: float
     composite_score: float
