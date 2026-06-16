@@ -1,6 +1,7 @@
 """Gemini 2.0 Flash adapter. Strict-JSON friendly."""
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any
@@ -12,10 +13,40 @@ from .base import LLMClient, LLMMessage, LLMResponse
 
 logger = get_logger(__name__)
 
+# Gemini free tier: 60 RPM. We set 36 RPM to leave headroom.
+_MAX_RPM_GEMINI = 36
+
+
+class _TokenBucket:
+    """Simple token-bucket rate limiter — one token per request, refilled at _MAX_RPM per 60s."""
+
+    def __init__(self, rate: float, window: float = 60.0) -> None:
+        self._rate = rate
+        self._window = window
+        self._tokens = float(rate)
+        self._last_refill = time.monotonic()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self) -> None:
+        async with self._lock:
+            now = time.monotonic()
+            elapsed = now - self._last_refill
+            self._tokens = min(float(self._rate), self._tokens + elapsed * (self._rate / self._window))
+            self._last_refill = now
+            if self._tokens < 1.0:
+                wait = (1.0 - self._tokens) * (self._window / self._rate)
+                logger.info("Gemini rate limit pause: %.1fs", wait)
+                await asyncio.sleep(wait)
+                self._tokens = 0.0
+                self._last_refill = time.monotonic()
+            else:
+                self._tokens -= 1.0
+
 
 class GeminiClient(LLMClient):
     name = "gemini"
     supports_json = True
+    _bucket = _TokenBucket(rate=_MAX_RPM_GEMINI)
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -48,6 +79,7 @@ class GeminiClient(LLMClient):
         max_tokens: int = 1024,
         json_mode: bool = False,
     ) -> LLMResponse:
+        await self._bucket.acquire()
         start = time.perf_counter()
         genai = self._ensure()
         sys, history = self._to_gemini_messages(messages)

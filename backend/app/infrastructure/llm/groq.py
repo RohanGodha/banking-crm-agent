@@ -1,6 +1,7 @@
 """Groq adapter — Llama 3.3 70B Versatile. Used for parallel WhatsApp drafting + failover."""
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any
@@ -12,10 +13,42 @@ from .base import LLMClient, LLMMessage, LLMResponse
 
 logger = get_logger(__name__)
 
+# Conservative rate limit for Groq free tier. Llama 3.3 70B is limited to ~30 RPM
+# on the free plan; we enforce 24 RPM (one call every 2.5s on average) so bursts
+# from parallel draft generation stay well within quota.
+_MAX_RPM = 24
+
+
+class _TokenBucket:
+    """Simple token-bucket rate limiter — one token per request, refilled at _MAX_RPM per 60s."""
+
+    def __init__(self, rate: float = _MAX_RPM, window: float = 60.0) -> None:
+        self._rate = rate
+        self._window = window
+        self._tokens = float(rate)
+        self._last_refill = time.monotonic()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self) -> None:
+        async with self._lock:
+            now = time.monotonic()
+            elapsed = now - self._last_refill
+            self._tokens = min(float(self._rate), self._tokens + elapsed * (self._rate / self._window))
+            self._last_refill = now
+            if self._tokens < 1.0:
+                wait = (1.0 - self._tokens) * (self._window / self._rate)
+                logger.info("Groq rate limit pause: %.1fs", wait)
+                await asyncio.sleep(wait)
+                self._tokens = 0.0
+                self._last_refill = time.monotonic()
+            else:
+                self._tokens -= 1.0
+
 
 class GroqClient(LLMClient):
     name = "groq"
     supports_json = True
+    _bucket = _TokenBucket()
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -36,6 +69,7 @@ class GroqClient(LLMClient):
         max_tokens: int = 1024,
         json_mode: bool = False,
     ) -> LLMResponse:
+        await self._bucket.acquire()
         start = time.perf_counter()
         client = self._ensure()
         payload_messages = [m.model_dump() for m in messages]
