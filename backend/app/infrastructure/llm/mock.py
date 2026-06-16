@@ -70,17 +70,28 @@ class MockLLM(LLMClient):
     # cannot collide with words like "CRITICAL" inside body copy.
     # -------------------------------------------------------------------
     _NODE_PATTERNS = {
-        "planner":     re.compile(r"\[node:planner\]|\bplanner\b\s+node|decompose"),
-        "critic":      re.compile(r"\[node:critic\]|\bcritic\b\s+node"),
-        "synthesizer": re.compile(r"\[node:synthesizer\]|\bsynthesizer\b\s+node|synthesi[sz]e"),
-        "whatsapp":    re.compile(r"\[node:whatsapp\]|whatsapp\s+message|relationship\s+manager"),
+        "intent":      re.compile(r"route a message from a banking"),
+        "follow_up":   re.compile(r"refining their previous request|rewrite their new message"),
+        "faq":         re.compile(r"knowledge base"),
+        "guardrail":   re.compile(r"outside the scope|politely decline"),
+        "planner":     re.compile(r"\[node:planner\]|decompose the rm|executable plan"),
+        "critic":      re.compile(r"\[node:critic\]|the \*\*critic\*\* node|critic.{0,20}node"),
+        "synthesizer": re.compile(r"\[node:synthesizer\]|the \*\*synthesizer\*\*|synthesi[sz]e"),
+        "whatsapp":    re.compile(r"writing a whatsapp message"),
     }
 
     def _dispatch(self, system: str, user: str, json_mode: bool) -> tuple[str, dict[str, Any]]:
         u_low = user.lower()
         s = system  # already lowercased by caller
-        # Order matters: whatsapp first (it has the most specific cue),
-        # then critic / synth, then planner as a catch-all.
+        # Most specific cues first.
+        if self._NODE_PATTERNS["follow_up"].search(s):
+            return self._follow_up(user)
+        if self._NODE_PATTERNS["intent"].search(s):
+            return self._intent(u_low)
+        if self._NODE_PATTERNS["faq"].search(s):
+            return self._faq()
+        if self._NODE_PATTERNS["guardrail"].search(s):
+            return self._guardrail()
         if self._NODE_PATTERNS["whatsapp"].search(s):
             return self._whatsapp(user)
         if self._NODE_PATTERNS["critic"].search(s):
@@ -94,6 +105,42 @@ class MockLLM(LLMClient):
             return json.dumps(data), data
         return ("This is a deterministic mock response. Configure GEMINI_API_KEY or "
                 "GROQ_API_KEY for real LLM output."), {}
+
+    def _intent(self, user_lower: str) -> tuple[str, dict[str, Any]]:
+        # Mirror the node heuristic so offline classification is sensible.
+        new_msg = user_lower.split("new message:")[-1]
+        data = {"intent": "task", "reason": "mock"}
+        if re.search(r"\b(you|your)\b", new_msg) and re.search(r"what|which|how|can|who|do you", new_msg):
+            data["intent"] = "faq"
+        elif re.match(r"\s*(hi|hey|hello|thanks|thank you|ok)", new_msg):
+            data["intent"] = "chitchat"
+        elif re.search(r"poem|code|weather|joke|movie|recipe", new_msg):
+            data["intent"] = "out_of_scope"
+        return json.dumps(data), data
+
+    def _follow_up(self, user: str) -> tuple[str, dict[str, Any]]:
+        prev = re.search(r"Previous:\s*'([^']*)'", user)
+        new = re.search(r"New:\s*'([^']*)'", user)
+        base = prev.group(1) if prev else ""
+        ref = new.group(1) if new else ""
+        rewritten = f"{base} ({ref})".strip() if base else ref
+        data = {"rewritten": rewritten}
+        return json.dumps(data), data
+
+    def _faq(self) -> tuple[str, dict[str, Any]]:
+        text = (
+            "I can find high-value customers, score their likelihood to convert, recommend a "
+            "suitable product, and draft compliance-checked WhatsApp outreach for your review. "
+            "Try: \"Find affluent customers in Mumbai for a personal loan and draft messages.\""
+        )
+        return text, {"summary": text}
+
+    def _guardrail(self) -> tuple[str, dict[str, Any]]:
+        text = (
+            "That's outside what I can help with. I'm your banking CRM copilot — I find customers, "
+            "score conversion likelihood, recommend products, and draft outreach."
+        )
+        return text, {"summary": text}
 
     # -------------------------------------------------------------------
     def _plan(self, user_lower: str) -> tuple[str, dict[str, Any]]:

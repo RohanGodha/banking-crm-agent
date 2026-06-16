@@ -146,6 +146,20 @@ Every node emits a typed `TraceEvent` that is streamed live over SSE. The fronte
 
 The system deliberately combines well-known patterns rather than inventing new ones — each one earns its place in the rubric.
 
+### 4.0 Intent-routed multi-prompt architecture
+
+Every message first hits an **intent gate** (heuristic + LLM `INTENT_PROMPT`) that routes to one of five paths — so a greeting never triggers a customer hunt:
+
+| Intent | Handler | Prompt |
+|---|---|---|
+| `task` | full agent pipeline | `PLANNER_PROMPT` (MASTER_AGENT) |
+| `follow_up` | rewrite-with-history → pipeline | `FOLLOW_UP_PROMPT` |
+| `faq` | grounded answer from KB | `FAQ_PROMPT` + `faq_kb.py` |
+| `chitchat` | conversational reply | (templated) |
+| `out_of_scope` | safe decline | `GUARDRAIL_PROMPT` |
+
+All prompts live in a single versioned registry: `app/agent/prompts.py` (`SYSTEM_PROMPT`, `INTENT_PROMPT`, `PLANNER_PROMPT`/`MASTER_AGENT_PROMPT`, `FOLLOW_UP_PROMPT`, `CRITIC_PROMPT`, `SYNTHESIZER_PROMPT`, `WHATSAPP_PROMPT`, `FAQ_PROMPT`, `GUARDRAIL_PROMPT`). Conversation history is loaded per session so `follow_up` refinements ("now only Bangalore, warmer tone") are rewritten into standalone tasks. Pattern adapted from a production VFS RAG bot (query-rewriting + intent routing + grounded FAQ) and an insurance multi-agent classifier.
+
 ### 4.1 Plan-and-Execute with Critic-in-the-loop
 
 - **Pattern:** *Planner emits a typed JSON plan → Executor runs each step → Critic decides pass/replan.*

@@ -1,20 +1,47 @@
 """Planner node — turns the RM's natural-language ask into a typed Plan."""
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
+from app.agent.prompts import FOLLOW_UP_PROMPT, planner_prompt
 from app.agent.state import AgentState, Plan, PlanStep, TraceEvent
 from app.infrastructure.llm import LLMMessage, get_llm_router
 from app.observability import get_logger
 
 logger = get_logger(__name__)
 
-_SYS_PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "planner_system.md"
-
 
 def _load_system() -> str:
-    return _SYS_PROMPT_PATH.read_text(encoding="utf-8")
+    return planner_prompt()
+
+
+async def _rewrite_follow_up(state: AgentState) -> str:
+    """Expand a refinement into a standalone task using conversation history."""
+    router = get_llm_router()
+    prev_user = next((h["content"] for h in reversed(state.history) if h["role"] == "user"), "")
+    prev_assistant = next((h["content"] for h in reversed(state.history) if h["role"] == "assistant"), "")
+    try:
+        resp = await router.complete(
+            kind="reasoning",
+            messages=[
+                LLMMessage(role="system", content=FOLLOW_UP_PROMPT),
+                LLMMessage(role="user", content=(
+                    f"Previous: '{prev_user}'\n"
+                    f"(assistant replied: {prev_assistant[:160]})\n"
+                    f"New: '{state.rm_query}'"
+                )),
+            ],
+            temperature=0.0,
+            max_tokens=160,
+            json_mode=True,
+        )
+        rewritten = (resp.json_data or {}).get("rewritten", "").strip()
+        if rewritten:
+            return rewritten
+    except Exception:  # noqa: BLE001
+        pass
+    # Fallback: concatenate previous task + new refinement
+    return f"{prev_user} ({state.rm_query})" if prev_user else state.rm_query
 
 
 def _coerce_plan(raw: dict[str, Any]) -> Plan:
@@ -63,7 +90,16 @@ def _default_plan(target_product: str = "PROD-LOAN-PL") -> Plan:
 async def run_planner(state: AgentState) -> AgentState:
     router = get_llm_router()
     sys_prompt = _load_system()
-    user_msg = state.rm_query.strip()
+
+    # Follow-up: rewrite into a standalone task using history before planning.
+    if state.intent == "follow_up" and state.history:
+        rewritten = await _rewrite_follow_up(state)
+        state.rewritten_query = rewritten
+        state.emit(TraceEvent(event="info", data={"node": "follow_up", "rewritten": rewritten}))
+        user_msg = rewritten.strip()
+    else:
+        user_msg = state.rm_query.strip()
+
     if not user_msg:
         state.plan = _default_plan()
         state.emit(TraceEvent(event="plan", data={"plan": state.plan.model_dump(), "source": "default"}))

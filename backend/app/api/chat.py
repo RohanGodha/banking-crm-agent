@@ -51,12 +51,25 @@ async def _persist_user_msg(session_id: str, content: str) -> None:
         await conn.commit()
 
 
+async def _load_history(session_id: str, limit: int = 8) -> list[dict[str, str]]:
+    """Recent prior turns for this session (excludes the just-inserted user msg via caller order)."""
+    async with get_async_conn() as conn:
+        cur = await conn.execute(
+            "SELECT role, content FROM messages WHERE session_id = ? ORDER BY ts ASC",
+            (session_id,),
+        )
+        rows = [dict(r) for r in await cur.fetchall()]
+    turns = [{"role": r["role"], "content": r["content"]} for r in rows if r["role"] in ("user", "assistant")]
+    return turns[-limit:]
+
+
 @router.post("/stream")
 async def chat_stream(req: ChatStreamIn, request: Request) -> EventSourceResponse:
     session_id = await _ensure_session(req.session_id, req.rm_query)
+    history = await _load_history(session_id)  # before inserting the new message
     await _persist_user_msg(session_id, req.rm_query)
 
-    state = AgentState(session_id=session_id, rm_query=req.rm_query, rm_name=req.rm_name)
+    state = AgentState(session_id=session_id, rm_query=req.rm_query, rm_name=req.rm_name, history=history)
 
     async def event_gen() -> AsyncIterator[dict]:
         yield {"event": "info", "data": json.dumps({"session_id": session_id})}
@@ -78,8 +91,9 @@ async def chat_stream(req: ChatStreamIn, request: Request) -> EventSourceRespons
 @router.post("/run")
 async def chat_run(req: ChatStreamIn) -> dict:
     session_id = await _ensure_session(req.session_id, req.rm_query)
+    history = await _load_history(session_id)
     await _persist_user_msg(session_id, req.rm_query)
-    state = AgentState(session_id=session_id, rm_query=req.rm_query, rm_name=req.rm_name)
+    state = AgentState(session_id=session_id, rm_query=req.rm_query, rm_name=req.rm_name, history=history)
     events = []
     async for ev in run_agent(state):
         events.append(ev.model_dump())

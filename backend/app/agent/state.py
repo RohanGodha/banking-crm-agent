@@ -76,6 +76,11 @@ class AgentState(BaseModel):
     rm_query: str = ""
     rm_name: str = "Rohan"
 
+    # Conversation memory: prior turns [{role, content}] loaded from the session.
+    history: list[dict[str, str]] = Field(default_factory=list)
+    intent: str = "task"          # task | follow_up | faq | chitchat | out_of_scope
+    rewritten_query: str | None = None  # set when a follow_up is expanded
+
     plan: Plan | None = None
     cursor: int = 0
     iterations: int = 0

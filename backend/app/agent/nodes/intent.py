@@ -1,106 +1,147 @@
-"""Intent gate — runs before the Planner.
+"""Intent gate — classifies the RM's message into a route before any work.
 
-Not every message is a CRM task. Greetings, small talk, "what is this?", or
-off-topic questions should get a short conversational reply, NOT a full
-customer-hunt pipeline. This node classifies the message and, for non-task
-input, produces a friendly response and signals the graph to stop early.
+Routes: task | follow_up | faq | chitchat | out_of_scope
+
+Strategy: a fast heuristic first pass, upgraded by an LLM classifier
+(INTENT_PROMPT) whenever a real provider is configured. Conversation history is
+considered so refinements are recognised as follow_ups.
 """
 from __future__ import annotations
 
 import re
 
+from app.agent.prompts import GUARDRAIL_PROMPT, INTENT_PROMPT, SYSTEM_PROMPT
 from app.agent.state import AgentState, TraceEvent
 from app.infrastructure.llm import LLMMessage, get_llm_router
 
-# Strong signals that the RM actually wants the CRM pipeline.
 _TASK_PATTERNS = re.compile(
-    r"\b(find|show|list|identify|customers?|loan|card|overdraft|sip|invest|"
+    r"\b(find|show|list|identify|pull|get|customers?|loan|card|overdraft|sip|invest|"
     r"propensity|convert|conversion|outreach|whatsapp|message|campaign|"
     r"high[- ]?value|segment|cross[- ]?sell|upsell|retention|slowdown|"
-    r"recommend|score|target|leads?|prospects?|portfolio|narrow|filter)\b",
+    r"recommend|score|target|leads?|prospects?|portfolio)\b",
     re.IGNORECASE,
 )
-
+_FOLLOWUP_PATTERNS = re.compile(
+    r"^\s*(now|also|instead|just|only|then|and|but|make (it|them)|narrow|"
+    r"filter|exclude|include|top \d+|change|warmer|formal|shorter|longer|"
+    r"more|less|same but)\b",
+    re.IGNORECASE,
+)
 _GREETING_PATTERNS = re.compile(
     r"^\s*(hi|hey|hello|yo|hola|namaste|good (morning|afternoon|evening)|"
-    r"sup|what'?s up|how are you|thanks?|thank you|ok(ay)?|cool|nice|"
-    r"who are you|what (is|are) (this|you)|help|\?+)\s*[!.?]*\s*$",
+    r"sup|what'?s up|how are you|thanks?|thank you|ok(ay)?|cool|nice)\s*[!.?]*\s*$",
+    re.IGNORECASE,
+)
+_FAQ_PATTERNS = re.compile(
+    r"(who are you|what (is|are|can) (this|you)|what do you do|how do you|"
+    r"what data|which products?|can you|do you (send|support)|help\b|capabilit)",
+    re.IGNORECASE,
+)
+_OUT_OF_SCOPE = re.compile(
+    r"\b(weather|poem|joke|code|python|football|cricket score|movie|recipe|"
+    r"translate|stock price|news)\b",
     re.IGNORECASE,
 )
 
-_HELP_TEXT = (
-    "I'm RM Copilot — I help you find high-value customers, score their likelihood "
-    "to convert, and draft compliant WhatsApp outreach.\n\n"
-    "Try asking me something like:\n"
-    "• \"Find high-value customers likely to convert for a personal loan this month "
-    "and draft WhatsApp messages.\"\n"
-    "• \"Show affluent customers in Bangalore for a premium credit card.\"\n"
-    "• \"Which customers show salary-credit slowdown — what should we offer them?\"\n\n"
-    "I'll show my reasoning step-by-step and list candidates on the right with an "
-    "editable, compliance-checked draft for each."
-)
+VALID_INTENTS = {"task", "follow_up", "faq", "chitchat", "out_of_scope"}
 
 
-def _looks_like_task(text: str) -> bool:
+def _is_question_about_assistant(t: str) -> bool:
+    """'what can you do', 'which products can you recommend' → FAQ, not a task."""
+    if not _FAQ_PATTERNS.search(t):
+        return False
+    # Phrased as a question to the assistant (mentions you/your or ends with ?)
+    return bool(re.search(r"\b(you|your)\b", t, re.IGNORECASE) or t.strip().endswith("?"))
+
+
+def _heuristic(text: str, has_history: bool) -> str:
     t = (text or "").strip()
     if not t:
-        return False
-    # Very short messages that are pure greetings → not a task
+        return "chitchat"
     if _GREETING_PATTERNS.match(t):
-        return False
-    # Otherwise, require at least one CRM-task keyword
-    return bool(_TASK_PATTERNS.search(t))
+        return "chitchat"
+    if _OUT_OF_SCOPE.search(t):
+        return "out_of_scope"
+    # Questions ABOUT the assistant's capabilities are FAQ, even if they contain
+    # task-like words ("what products can you recommend?").
+    if _is_question_about_assistant(t):
+        return "faq"
+    if has_history and _FOLLOWUP_PATTERNS.match(t) and not _TASK_PATTERNS.search(t):
+        return "follow_up"
+    if _TASK_PATTERNS.search(t):
+        if has_history and _FOLLOWUP_PATTERNS.match(t):
+            return "follow_up"
+        return "task"
+    if _FAQ_PATTERNS.search(t):
+        return "faq"
+    return "faq"  # default: treat unknown as a question, not a customer hunt
 
 
-async def run_intent(state: AgentState) -> bool:
-    """Return True if this is a CRM task (proceed to Planner), False if handled here."""
+async def classify_intent(state: AgentState) -> str:
     text = state.rm_query or ""
+    has_history = len(state.history) > 0
+    intent = _heuristic(text, has_history)
 
-    is_task = _looks_like_task(text)
-
-    # If keyword heuristic is ambiguous (no greeting match, no task keyword),
-    # ask a real LLM to classify — but only when one is configured (not mock),
-    # so offline behaviour stays deterministic.
     router = get_llm_router()
-    if not is_task and not _GREETING_PATTERNS.match(text.strip()) and router.status().get("gemini"):
+    # Upgrade with LLM classifier when a real provider exists.
+    if router.status().get("gemini") or router.status().get("groq"):
         try:
+            convo = "\n".join(f"{h['role']}: {h['content']}" for h in state.history[-4:])
             resp = await router.complete(
                 kind="reasoning",
                 messages=[
-                    LLMMessage(role="system", content=(
-                        "Classify the user's message for a banking RM assistant. "
-                        "Reply with exactly one word: TASK if they want to find/score/"
-                        "target customers or draft outreach; CHAT for greetings, "
-                        "small talk, or general questions."
-                    )),
-                    LLMMessage(role="user", content=text),
+                    LLMMessage(role="system", content=INTENT_PROMPT),
+                    LLMMessage(role="user", content=f"Recent conversation:\n{convo or '(none)'}\n\nNew message: {text}"),
                 ],
                 temperature=0.0,
-                max_tokens=4,
+                max_tokens=40,
+                json_mode=True,
             )
-            is_task = resp.text.strip().upper().startswith("TASK")
+            data = resp.json_data or {}
+            cand = str(data.get("intent", "")).strip().lower()
+            if cand in VALID_INTENTS:
+                intent = cand
         except Exception:  # noqa: BLE001
             pass
 
-    state.emit(TraceEvent(
-        event="info",
-        data={"node": "intent", "classified": "task" if is_task else "chat"},
-    ))
-
-    if is_task:
-        return True
-
-    # Conversational reply — short-circuit the pipeline.
-    state.final_summary = _conversational_reply(text)
-    state.emit(TraceEvent(event="synth", data={"summary": state.final_summary, "candidate_count": 0, "mode": "chat"}))
-    return False
+    state.intent = intent
+    state.emit(TraceEvent(event="info", data={"node": "intent", "intent": intent, "has_history": has_history}))
+    return intent
 
 
-def _conversational_reply(text: str) -> str:
-    t = text.strip().lower()
-    if re.match(r"^\s*(thanks?|thank you|ok(ay)?|cool|nice)\b", t):
-        return "Anytime, Rohan. Whenever you're ready, tell me which segment or product to target and I'll pull the list."
-    if "who are you" in t or "what is this" in t or "what are you" in t or "help" in t:
-        return _HELP_TEXT
-    # default greeting
-    return f"Hi Rohan! {_HELP_TEXT}"
+async def run_chitchat(state: AgentState) -> AgentState:
+    name = state.rm_name or "Rohan"
+    text = (
+        f"Hi {name}! I'm RM Copilot. Tell me which customers to target and I'll find them, "
+        "score their likelihood to convert, recommend a product, and draft WhatsApp outreach. "
+        "For example: \"Find high-value customers likely to convert for a personal loan and draft messages.\""
+    )
+    t = (state.rm_query or "").lower()
+    if re.match(r"^\s*(thanks?|thank you|ok(ay)?|cool|nice)", t):
+        text = f"Anytime, {name}. Whenever you're ready, tell me the segment or product to target."
+    state.final_summary = text
+    state.emit(TraceEvent(event="synth", data={"summary": text, "candidate_count": 0, "mode": "chitchat"}))
+    return state
+
+
+async def run_guardrail(state: AgentState) -> AgentState:
+    router = get_llm_router()
+    try:
+        resp = await router.complete(
+            kind="reasoning",
+            messages=[
+                LLMMessage(role="system", content=SYSTEM_PROMPT + "\n\n" + GUARDRAIL_PROMPT),
+                LLMMessage(role="user", content=state.rm_query),
+            ],
+            temperature=0.3,
+            max_tokens=120,
+        )
+        text = resp.text.strip()
+    except Exception:  # noqa: BLE001
+        text = (
+            "That's outside what I can help with. I'm your banking CRM copilot — I can find "
+            "customers, score conversion likelihood, recommend products, and draft outreach."
+        )
+    state.final_summary = text
+    state.emit(TraceEvent(event="synth", data={"summary": text, "candidate_count": 0, "mode": "out_of_scope"}))
+    return state

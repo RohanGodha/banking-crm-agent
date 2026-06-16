@@ -12,7 +12,8 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 from app.agent.nodes.critic import run_critic
-from app.agent.nodes.intent import run_intent
+from app.agent.nodes.faq import run_faq
+from app.agent.nodes.intent import classify_intent, run_chitchat, run_guardrail
 from app.agent.nodes.message_generator import run_message_generator
 from app.agent.nodes.planner import run_planner
 from app.agent.nodes.responder import run_responder
@@ -37,17 +38,27 @@ async def run_agent(state: AgentState) -> AsyncIterator[TraceEvent]:
     async for ev in _yield_drain(state):
         yield ev
 
-    # 0. Intent gate — greetings / small talk get a conversational reply, no pipeline.
-    is_task = await run_intent(state)
+    # 0. Intent gate — route the message before doing any work.
+    intent = await classify_intent(state)
     async for ev in _yield_drain(state):
         yield ev
-    if not is_task:
+
+    # Non-pipeline routes short-circuit with a single response.
+    if intent in {"chitchat", "faq", "out_of_scope"}:
+        if intent == "chitchat":
+            await run_chitchat(state)
+        elif intent == "faq":
+            await run_faq(state)
+        else:
+            await run_guardrail(state)
+        async for ev in _yield_drain(state):
+            yield ev
         await run_responder(state)
         async for ev in _yield_drain(state):
             yield ev
         return
 
-    # 1. Planner
+    # 1. Planner (handles follow_up rewriting internally using history)
     await run_planner(state)
     async for ev in _yield_drain(state):
         yield ev

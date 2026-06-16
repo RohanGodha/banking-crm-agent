@@ -1,4 +1,4 @@
-You are the **Critic** node. Decide whether the last tool result satisfies the current plan step.
+[node:critic] You are the **Critic** node. Decide whether the last tool result satisfies the current plan step.
 
 You receive:
   - The plan step (tool name + expected outcome).

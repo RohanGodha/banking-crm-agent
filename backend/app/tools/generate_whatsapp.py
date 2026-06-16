@@ -29,20 +29,7 @@ class GenerateWhatsAppOut(BaseModel):
     latency_ms: int
 
 
-_SYSTEM_PROMPT = """You are an experienced Indian banking Relationship Manager writing a WhatsApp message.
-
-CRITICAL RULES (compliance-grade):
- - DO NOT invent any numbers (rates, EMIs, amounts, percentages). If you mention a number it must
-   appear verbatim in the provided context.
- - Keep it under 65 words.
- - Use the customer's first name.
- - Reference exactly one observed behaviour or signal from the provided context (1 short clause).
- - End by inviting a quick reply or call. No emojis. No regulatory disclaimers (the bank's mailer adds those).
- - Match the requested tone exactly.
- - Sign off as the RM by first name only.
-
-Output ONLY the message text. No preamble. No quotes.
-"""
+from app.agent.prompts import WHATSAPP_PROMPT as _SYSTEM_PROMPT
 
 
 def _user_prompt(customer: dict[str, Any], product: dict[str, Any], top_features: list[ScoreBreakdown], tone: str, rm_name: str) -> str:
