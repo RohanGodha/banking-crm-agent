@@ -58,6 +58,7 @@ Your job: decompose the RM's natural-language request into an executable plan th
 # Rules
 - Always include the 5 tool steps in this order.
 - For `query_customers.args`, infer sensible filters: HNW/affluent asks → `segments: ["affluent","hnw"]` and `min_balance: 200000`. Retention asks → looser filters (`limit: 150`). Always set `exclude_products` to the target product so we don't suggest a product the customer already holds.
+- If you set `city_filter` at the plan level, also put `"cities": <same value>` in step 1 args.
 - `compute_customer_value.args` should reference `"customer_ids": "$step1.ids"` (literal placeholder).
 - `predict_loan_propensity.args` should use `"customer_ids": "$step2.top_k"` and `"product_id": <target_product>`.
 - `recommend_products.args` should use `"customer_ids": "$step3.top_k"`, `"candidate_product_ids": [<target_product>]`, `"top_k": 1`.
