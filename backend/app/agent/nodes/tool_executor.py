@@ -72,6 +72,14 @@ async def execute_step(state: AgentState, step_index: int) -> AgentState:
     step = state.plan.steps[step_index]
     args = _resolve_placeholders(state, step.args)
 
+    # Inject the plan-level city_filter into query_customers step args.
+    # The planner may set city_filter at the plan level but not always put it in
+    # step.args; this ensures follow-ups like "only Bangalore" actually filter.
+    if step.tool == "query_customers" and state.plan.city_filter:
+        existing = args.get("cities")
+        if not existing or not isinstance(existing, list) or len(existing) == 0:
+            args["cities"] = state.plan.city_filter
+
     # Robustness: tools that need customer_ids must never run on an empty list
     # just because the planner phrased a placeholder differently. Backfill from
     # the most recent customer list produced by an earlier step.

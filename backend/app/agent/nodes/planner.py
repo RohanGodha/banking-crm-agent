@@ -51,10 +51,21 @@ def _coerce_plan(raw: dict[str, Any]) -> Plan:
             steps.append(PlanStep(**s))
         except Exception:  # noqa: BLE001
             continue
+
+    # city_filter can arrive as a list, a string, or null — normalise to list.
+    raw_cf = raw.get("city_filter")
+    if isinstance(raw_cf, str):
+        cf: list[str] | None = [raw_cf]
+    elif isinstance(raw_cf, list):
+        cf = [str(c) for c in raw_cf if c]
+        cf = cf if cf else None
+    else:
+        cf = None
+
     return Plan(
         intent=raw.get("intent", "find_high_value_customers"),
         target_product=raw.get("target_product"),
-        city_filter=raw.get("city_filter") or None,
+        city_filter=cf,
         tone=raw.get("tone", "professional"),
         language=raw.get("language", "English") or "English",
         steps=steps,
