@@ -106,9 +106,9 @@ class LLMRouter:
                     if attempt + 1 < attempts:
                         import asyncio
                         await asyncio.sleep(0.8 * (attempt + 1))
-                        logger.info("%s.complete retry %d (%s)", client.name, attempt + 1, e.__class__.__name__)
+                        logger.info("%s.complete retry %d (%s): %s", client.name, attempt + 1, e.__class__.__name__, e)
                     else:
-                        logger.warning("%s.complete failed (%s) — falling through.", client.name, e.__class__.__name__)
+                        logger.warning("%s.complete failed (%s): %s — falling through.", client.name, e.__class__.__name__, e)
         # Final safety: always return *something* (mock never fails)
         raise RuntimeError(f"All LLM providers failed: {last_err}")
 

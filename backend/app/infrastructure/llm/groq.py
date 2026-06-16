@@ -81,7 +81,11 @@ class GroqClient(LLMClient):
         }
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        resp = await client.chat.completions.create(**kwargs)
+        try:
+            resp = await client.chat.completions.create(**kwargs)
+        except Exception as e:
+            logger.error("Groq API call failed: model=%s kind=json_mode=%s err=%s", self.settings.groq_model, json_mode, e)
+            raise
         text = (resp.choices[0].message.content or "").strip()
         json_data = None
         if json_mode:
