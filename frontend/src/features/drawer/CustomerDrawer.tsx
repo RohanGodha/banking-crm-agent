@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUi } from '@/store/uiStore';
 import { api } from '@/lib/api';
-import { inr, maskPhone, pct, relTime, truncate } from '@/lib/format';
+import { inr, maskPhone, pct, relTime, truncate, cap } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { X, Phone, MapPin, Briefcase, ShieldCheck, ListChecks, Wallet, Calendar, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
 import { WhatsAppPreview } from './WhatsAppPreview';
@@ -43,18 +43,18 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
         className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in z-40"
         onClick={close}
       />
-      <aside className="fixed right-0 top-0 h-screen w-[680px] max-w-[100vw] bg-bg border-l border-border shadow-2xl z-50 animate-fade-in overflow-hidden flex flex-col">
-        <header className="h-12 px-4 flex items-center justify-between border-b border-border bg-bg-soft">
+      <aside className="fixed right-0 top-0 h-screen w-full sm:w-[560px] lg:w-[680px] max-w-[100vw] bg-bg border-l border-border shadow-pop z-50 animate-slide-in-right overflow-hidden flex flex-col">
+        <header className="shrink-0 h-12 px-4 flex items-center justify-between border-b border-border bg-bg-soft">
           <div className="flex items-center gap-2">
             <Sparkles size={14} className="text-accent-glow" />
             <span className="text-sm font-semibold">Customer 360</span>
           </div>
-          <button onClick={close} className="btn-ghost p-1.5">
-            <X size={14} />
+          <button onClick={close} className="icon-btn" title="Close">
+            <X size={16} />
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
           {loading && <Skeleton />}
           {err && (
             <div className="text-sm text-danger flex items-center gap-2">
@@ -65,7 +65,7 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
             <>
               <ProfileBlock customer={data.customer} source={data.source} candidate={candidate} />
               {candidate && (
-                <Section title="Score breakdown" subtitle="Top features contributing to ranking">
+                <Section title="Score Breakdown" subtitle="Top features contributing to ranking">
                   <ScoreBreakdownChart features={candidate.top_features} />
                   <div className="mt-3 text-xs text-text-muted leading-relaxed">
                     {candidate.rationale}
@@ -74,18 +74,18 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
               )}
               {draft && (
                 <Section
-                  title="WhatsApp draft"
+                  title="WhatsApp Draft"
                   subtitle={draft.compliance.ok
                     ? 'All numbers grounded · ready to send'
                     : `${(draft.compliance.ungrounded || []).length} ungrounded number(s) stripped`}
                   badge={
                     draft.compliance.ok ? (
                       <span className="badge-pos">
-                        <CheckCircle2 size={11} /> compliance ok
+                        <CheckCircle2 size={11} /> Compliance OK
                       </span>
                     ) : (
                       <span className="badge-warn">
-                        <AlertTriangle size={11} /> redacted
+                        <AlertTriangle size={11} /> Redacted
                       </span>
                     )
                   }
@@ -109,7 +109,7 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
                   )}
                 </ul>
               </Section>
-              <Section title="Recent transactions" subtitle={`last 6 months · ${data.transactions.length} txns`}>
+              <Section title="Recent Transactions" subtitle={`Last 6 months · ${data.transactions.length} txns`}>
                 <ul className="space-y-1 text-[12px]">
                   {data.transactions.slice(0, 8).map((t: any) => (
                     <li key={t.id} className="flex items-center justify-between rounded-md bg-bg-soft/60 px-3 py-1.5">
@@ -127,7 +127,7 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
                   ))}
                 </ul>
               </Section>
-              <Section title="Past interactions" subtitle={`${data.interactions.length} note(s) on file`}>
+              <Section title="Past Interactions" subtitle={`${data.interactions.length} note(s) on file`}>
                 <ul className="space-y-2 text-sm">
                   {data.interactions.map((i: any) => (
                     <li key={i.id} className="rounded-md bg-bg-card border border-border p-3">
@@ -165,23 +165,23 @@ function ProfileBlock({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-base font-semibold">{customer.name}</div>
-          <div className="text-xs text-text-muted mt-0.5 flex items-center gap-3">
+          <div className="text-xs text-text-muted mt-0.5 flex items-center flex-wrap gap-x-3 gap-y-1.5">
             <span className="inline-flex items-center gap-1">
               <MapPin size={11} /> {customer.city}
             </span>
             <span className="inline-flex items-center gap-1">
               <Phone size={11} /> {maskPhone(customer.phone)}
             </span>
-            <span className="badge text-[10px]">{customer.segment}</span>
-            <span className="badge text-[10px]">data: {source}</span>
+            <span className="badge text-[10px]">{cap(customer.segment?.replace(/_/g, ' '))}</span>
+            <span className="badge text-[10px]">Data: {source}</span>
             {candidate?.escalate && (
               <span className="badge-warn text-[10px]">
-                {candidate.churn_risk ? 'churn risk' : 'escalate'}
+                {candidate.churn_risk ? 'Churn Risk' : 'Escalate'}
               </span>
             )}
             {candidate?.sentiment && candidate.sentiment !== 'neutral' && (
               <span className={candidate.sentiment === 'negative' ? 'badge-neg text-[10px]' : 'badge-pos text-[10px]'}>
-                {candidate.sentiment}
+                {cap(candidate.sentiment)}
               </span>
             )}
           </div>
@@ -198,7 +198,7 @@ function ProfileBlock({
           </div>
         )}
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+      <div className="mt-3 grid grid-cols-2 xs:grid-cols-3 gap-2 text-xs">
         <Stat label="Monthly income" value={inr(customer.monthly_income, { compact: true })} />
         <Stat label="Avg balance (6m)" value={inr(customer.avg_balance_6m, { compact: true })} />
         <Stat label="Tenure" value={truncate(customer.account_open_date, 10)} />
@@ -247,9 +247,9 @@ function Skeleton() {
       <div className="flex justify-center py-4">
         <D3Loader size={32} label="Loading customer 360…" />
       </div>
-      <div className="h-24 rounded-lg bg-bg-soft animate-pulse" />
-      <div className="h-32 rounded-lg bg-bg-soft animate-pulse" />
-      <div className="h-40 rounded-lg bg-bg-soft animate-pulse" />
+      <div className="h-24 skeleton" />
+      <div className="h-32 skeleton" />
+      <div className="h-40 skeleton" />
     </div>
   );
 }

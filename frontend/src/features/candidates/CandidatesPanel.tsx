@@ -17,7 +17,7 @@ export function CandidatesPanel() {
 
   return (
     <div className="h-full flex flex-col bg-bg-soft/40">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+      <div className="panel-head">
         <div className="flex items-center gap-2">
           <Users size={14} className="text-accent-glow" />
           <span className="text-sm font-semibold">Candidates</span>
@@ -26,7 +26,7 @@ export function CandidatesPanel() {
           </span>
         </div>
         {candidates.length > 0 && (
-          <span className="text-[10px] text-text-dim">sorted by composite score</span>
+          <span className="hidden xl:inline text-[10px] text-text-dim">Sorted by composite score</span>
         )}
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -69,10 +69,10 @@ export function CandidatesPanel() {
               <span className="text-text">{c.recommended_product_name}</span>
               {c.escalate && (
                 <span className="badge-warn" title="Negative sentiment / churn risk — priority human attention">
-                  <AlertTriangle size={10} /> {c.churn_risk ? 'churn risk' : 'escalate'}
+                  <AlertTriangle size={10} /> {c.churn_risk ? 'Churn Risk' : 'Escalate'}
                 </span>
               )}
-              {c.sentiment === 'positive' && <span className="badge-pos">positive</span>}
+              {c.sentiment === 'positive' && <span className="badge-pos">Positive</span>}
             </div>
 
             {c.top_features?.[0] && (

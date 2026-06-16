@@ -33,12 +33,12 @@ export function ChatPane() {
   return (
     <div className="h-full flex flex-col">
       {/* Conversation / trace area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
         {/* Full conversation transcript */}
         {ui.transcript.map((turn, i) =>
           turn.role === 'user' ? (
             <div key={i} className="flex justify-end animate-fade-in">
-              <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-accent/15 border border-accent-soft/40 px-4 py-2.5 text-sm text-text whitespace-pre-wrap">
+              <div className="max-w-[85%] sm:max-w-[80%] rounded-2xl rounded-tr-sm bg-accent/15 border border-accent-soft/40 px-4 py-2.5 text-sm text-text whitespace-pre-wrap break-words">
                 {turn.content}
               </div>
             </div>
@@ -85,8 +85,8 @@ export function ChatPane() {
       </div>
 
       {/* Composer */}
-      <div className="border-t border-border p-3">
-        <div className="rounded-xl border border-border bg-bg-card focus-within:border-accent/60 transition-colors">
+      <div className="shrink-0 border-t border-border p-2.5 sm:p-3">
+        <div className="rounded-xl border border-border bg-bg-card focus-within:border-accent/60 focus-within:shadow-glow transition-all">
           <textarea
             ref={taRef}
             rows={2}
@@ -102,9 +102,10 @@ export function ChatPane() {
             className="w-full resize-none bg-transparent px-3 py-2.5 text-sm placeholder:text-text-dim focus:outline-none"
             disabled={ui.isStreaming}
           />
-          <div className="flex items-center justify-between px-3 pb-2 pt-1">
-            <div className="text-[11px] text-text-dim">
-              Enter to send · Shift+Enter for newline
+          <div className="flex items-center justify-between gap-2 px-3 pb-2 pt-1">
+            <div className="text-[11px] text-text-dim truncate">
+              <span className="hidden sm:inline">Enter to send · Shift+Enter for newline</span>
+              <span className="sm:hidden">Enter to send</span>
             </div>
             <button
               onClick={() => submit()}
@@ -144,23 +145,24 @@ function AssistantBubble({ text }: { text: string }) {
 
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   return (
-    <div className="max-w-2xl mx-auto pt-6 animate-fade-in">
+    <div className="max-w-2xl mx-auto pt-4 sm:pt-6 animate-fade-in">
       <div className="text-center space-y-2">
         <div className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-accent/10 border border-accent-soft/30 text-accent-glow">
           <Sparkles size={18} />
         </div>
-        <h2 className="text-lg font-semibold">Good morning, Rohan.</h2>
-        <p className="text-sm text-text-muted">
-          Ask in plain language. I’ll decompose, query the warehouse, score customers,
-          and draft compliant WhatsApp outreach you can review and approve.
+        <h2 className="text-base sm:text-lg font-semibold">{greeting()}, Rohan.</h2>
+        <p className="text-sm text-text-muted px-2">
+          Ask in plain language. I’ll decompose the request, query the warehouse, score
+          customers, and draft compliant WhatsApp outreach for you to review and approve.
         </p>
       </div>
-      <div className="mt-6 grid gap-2">
+      <div className="mt-5 sm:mt-6 grid gap-2">
+        <div className="eyebrow px-1">Try one of these</div>
         {QUICK_PROMPTS.map((q, i) => (
           <button
             key={i}
             onClick={() => onPick(q)}
-            className="text-left text-sm rounded-lg border border-border bg-bg-card hover:border-accent/40 hover:bg-bg-soft transition-colors px-4 py-3"
+            className="text-left text-sm rounded-lg border border-border bg-bg-card card-hover px-4 py-3"
           >
             <span className="text-text">{q}</span>
           </button>
@@ -168,4 +170,11 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
       </div>
     </div>
   );
+}
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }

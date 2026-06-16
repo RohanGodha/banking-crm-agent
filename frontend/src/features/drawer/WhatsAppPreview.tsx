@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { DraftRecord } from '@/lib/types';
 import { cn } from '@/lib/cn';
-import { Send, Edit3, Save, X } from 'lucide-react';
+import { Edit3, Save, X, Copy, Check, MessageCircle } from 'lucide-react';
+import { resolvePhone, hasMappedPhone, whatsappSendUrl } from '@/lib/demoPhones';
 
 export function WhatsAppPreview({
   customer,
@@ -13,7 +14,29 @@ export function WhatsAppPreview({
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(draft.message);
   const [savedText, setSavedText] = useState(draft.message);
-  const [approved, setApproved] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const phone = resolvePhone(customer?.name, customer?.phone);
+  const mapped = hasMappedPhone(customer?.name);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(savedText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {/* clipboard unavailable */}
+  }
+
+  async function sendOnWhatsApp() {
+    // Copy as a safety net in case the pre-fill is blocked, then open the chat.
+    try {
+      await navigator.clipboard.writeText(savedText);
+    } catch {/* clipboard unavailable */}
+    window.open(whatsappSendUrl(phone, savedText), '_blank', 'noopener,noreferrer');
+    setSent(true);
+    setTimeout(() => setSent(false), 2500);
+  }
 
   return (
     <div>
@@ -21,7 +44,7 @@ export function WhatsAppPreview({
         <div className="rounded-2xl bg-[#0b1218] border border-border overflow-hidden shadow-lg">
           {/* Status bar */}
           <div className="h-6 bg-black/60 flex items-center justify-center text-[10px] text-text-muted">
-            ── live preview ──
+            ── Live Preview ──
           </div>
           {/* Header */}
           <div className="px-3 py-2 bg-[#1f2c33] flex items-center gap-2">
@@ -30,7 +53,7 @@ export function WhatsAppPreview({
             </div>
             <div>
               <div className="text-[12px] font-medium text-white">{customer.name}</div>
-              <div className="text-[10px] text-text-muted">online</div>
+              <div className="text-[10px] text-text-muted">Online</div>
             </div>
           </div>
           {/* Body */}
@@ -60,7 +83,7 @@ export function WhatsAppPreview({
         </div>
 
         {/* Actions */}
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {editing ? (
             <>
               <button
@@ -81,16 +104,33 @@ export function WhatsAppPreview({
               <button onClick={() => setEditing(true)} className="btn-outline">
                 <Edit3 size={13} /> Edit
               </button>
+              <button onClick={copy} className="btn-outline">
+                {copied ? <Check size={13} className="text-positive" /> : <Copy size={13} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
               <button
-                disabled={approved}
-                onClick={() => setApproved(true)}
-                className={cn('btn-primary', approved && 'opacity-70')}
+                onClick={sendOnWhatsApp}
+                disabled={!phone}
+                className={cn('btn-primary', sent && 'opacity-80')}
+                title={
+                  phone
+                    ? 'Opens WhatsApp Web with the message pre-filled — review, then press Send'
+                    : 'No phone number available for this customer'
+                }
               >
-                <Send size={13} /> {approved ? 'Approved' : 'Approve & queue'}
+                {sent ? <Check size={13} /> : <MessageCircle size={13} />}
+                {sent ? 'Opened in WhatsApp' : 'Send on WhatsApp'}
               </button>
             </>
           )}
         </div>
+
+        {!mapped && phone && (
+          <p className="mt-2 text-[11px] text-text-dim leading-relaxed">
+            Note: this customer uses a synthetic demo number, so WhatsApp may show
+            “not on WhatsApp”. The message is copied to your clipboard either way.
+          </p>
+        )}
 
         {draft.compliance && !draft.compliance.ok && (draft.compliance.ungrounded || []).length > 0 && (
           <div className="mt-3 text-[11px] rounded-md bg-warning/10 border border-warning/30 text-warning px-3 py-2 leading-relaxed">

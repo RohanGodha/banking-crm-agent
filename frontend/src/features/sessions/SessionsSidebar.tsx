@@ -62,7 +62,7 @@ export function SessionsSidebar() {
         )}
       </div>
       <div className="px-3 py-2 border-t border-border text-[11px] text-text-dim">
-        v0.1 · RM = Rohan
+        v0.1 · RM: Rohan
       </div>
     </div>
   );
@@ -81,9 +81,7 @@ function Group({
 }) {
   return (
     <div>
-      <div className="px-2 pb-1 text-[10px] uppercase tracking-wider text-text-dim">
-        {title}
-      </div>
+      <div className="px-2 pb-1 eyebrow">{title}</div>
       <ul className="space-y-1">
         {rows.map((s) => (
           <li key={s.id}>

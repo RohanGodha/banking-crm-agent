@@ -5,14 +5,22 @@ import { CandidatesPanel } from '@/features/candidates/CandidatesPanel';
 import { CustomerDrawer } from '@/features/drawer/CustomerDrawer';
 import { useUi } from '@/store/uiStore';
 import { api } from '@/lib/api';
-import { LogOut, Activity, Server, BookOpen } from 'lucide-react';
+import { LogOut, Activity, Server, BookOpen, MessageSquare, Sparkles, Users } from 'lucide-react';
 import { GuidePanel } from '@/features/guide/GuidePanel';
 import { useAgentStream } from '@/hooks/useAgentStream';
+import { useTheme } from '@/hooks/useTheme';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { cn } from '@/lib/cn';
+
+type MobilePane = 'sessions' | 'chat' | 'candidates';
 
 export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const selected = useUi((s) => s.selectedCustomerId);
   const sessionId = useUi((s) => s.sessionId);
+  const candidates = useUi((s) => s.candidates);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [mobilePane, setMobilePane] = useState<MobilePane>('chat');
+  const { theme, toggle } = useTheme();
   const { run } = useAgentStream();
   const [status, setStatus] = useState<{
     datasource_active: string;
@@ -27,63 +35,161 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const llmActive = status
     ? Object.entries(status.llm_providers)
         .filter(([k, v]) => v && k !== 'mock')
-        .map(([k]) => k)
+        .map(([k]) => k.toUpperCase())
     : [];
-  const llmLabel = llmActive.length ? llmActive.join(' + ') : 'mock';
+  const llmLabel = llmActive.length ? llmActive.join(' + ') : 'Mock';
 
   return (
-    <div className="h-screen flex flex-col bg-bg text-text">
-      {/* Top bar */}
-      <header className="h-12 flex items-center justify-between px-4 border-b border-border bg-bg-soft/60 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <div className="h-7 w-7 rounded-md bg-accent/15 border border-accent-soft/40 flex items-center justify-center">
+    <div className="h-screen flex flex-col bg-bg text-text overflow-hidden">
+      {/* ─────────────────────────── Top bar ─────────────────────────── */}
+      <header className="shrink-0 h-12 flex items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-bg-soft/60 backdrop-blur">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-7 w-7 shrink-0 rounded-md bg-accent/15 border border-accent-soft/40 flex items-center justify-center">
             <Activity size={14} className="text-accent-glow" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold">RM Copilot</span>
-            <span className="text-[11px] text-text-dim">Banking CRM Agent · for Rohan</span>
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="text-sm font-semibold whitespace-nowrap">RM Copilot</span>
+            <span className="hidden md:inline text-[11px] text-text-dim truncate">
+              Banking CRM Agent · for Rohan
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-text-muted">
+
+        <div className="flex items-center gap-1.5 sm:gap-3 text-[11px] text-text-muted">
+          {/* Status badges — progressively revealed as the window widens. */}
           {status && (
             <>
-              <span className="badge"><Server size={11} /> {status.datasource_active}</span>
-              <span className={status.datasource_healthy ? 'badge-pos' : 'badge-neg'}>
-                {status.datasource_healthy ? 'data ok' : 'data degraded'}
+              <span className="badge hidden lg:inline-flex">
+                <Server size={11} /> {status.datasource_active}
               </span>
-              <span className="badge-accent">llm: {llmLabel}</span>
+              <span
+                className={cn(
+                  'hidden md:inline-flex',
+                  status.datasource_healthy ? 'badge-pos' : 'badge-neg',
+                )}
+              >
+                {status.datasource_healthy ? 'Data OK' : 'Data Degraded'}
+              </span>
+              <span className="badge-accent hidden sm:inline-flex">LLM: {llmLabel}</span>
             </>
           )}
-          <button onClick={() => setGuideOpen(true)} className="btn-ghost text-xs" title="What can RM Copilot do?">
+          <button
+            onClick={() => setGuideOpen(true)}
+            className="btn-ghost text-xs px-2 sm:px-3"
+            title="What can RM Copilot do?"
+          >
             <BookOpen size={13} />
-            Guide
+            <span className="hidden sm:inline">Guide</span>
           </button>
-          <button onClick={onLogout} className="btn-ghost text-xs">
+          <ThemeToggle theme={theme} onToggle={toggle} />
+          <button onClick={onLogout} className="btn-ghost text-xs px-2 sm:px-3" title="Sign out">
             <LogOut size={13} />
-            Sign out
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-[260px_1fr_440px] overflow-hidden">
-        <aside className="border-r border-border overflow-hidden">
+      {/* ─────────────────────────── Main panes ─────────────────────────
+          lg+  → fixed 3-column workspace.
+          <lg  → one pane at a time, switched via the bottom tab bar.       */}
+      <main className="flex-1 overflow-hidden lg:grid lg:grid-cols-[260px_1fr_440px] xl:grid-cols-[300px_1fr_460px]">
+        <aside
+          className={cn(
+            'h-full border-r border-border overflow-hidden lg:block',
+            mobilePane === 'sessions' ? 'block' : 'hidden',
+          )}
+        >
           <SessionsSidebar />
         </aside>
-        <section className="overflow-hidden">
+
+        <section
+          className={cn(
+            'h-full overflow-hidden lg:block',
+            mobilePane === 'chat' ? 'block' : 'hidden',
+          )}
+        >
           <ChatPane />
         </section>
-        <aside className="border-l border-border overflow-hidden">
+
+        <aside
+          className={cn(
+            'h-full border-l border-border overflow-hidden lg:block',
+            mobilePane === 'candidates' ? 'block' : 'hidden',
+          )}
+        >
           <CandidatesPanel />
         </aside>
       </main>
+
+      {/* ─────────────────── Mobile / tablet bottom nav ─────────────────── */}
+      <nav className="lg:hidden shrink-0 flex items-stretch border-t border-border bg-bg-soft/85 backdrop-blur pb-safe">
+        <NavBtn
+          active={mobilePane === 'sessions'}
+          onClick={() => setMobilePane('sessions')}
+          icon={<MessageSquare size={17} />}
+          label="Chats"
+        />
+        <NavBtn
+          active={mobilePane === 'chat'}
+          onClick={() => setMobilePane('chat')}
+          icon={<Sparkles size={17} />}
+          label="Copilot"
+        />
+        <NavBtn
+          active={mobilePane === 'candidates'}
+          onClick={() => setMobilePane('candidates')}
+          icon={<Users size={17} />}
+          label="Candidates"
+          count={candidates.length}
+        />
+      </nav>
 
       {selected && <CustomerDrawer customerId={selected} />}
       {guideOpen && (
         <GuidePanel
           onClose={() => setGuideOpen(false)}
-          onRunPrompt={(q) => run({ query: q, sessionId })}
+          onRunPrompt={(q) => {
+            setMobilePane('chat');
+            run({ query: q, sessionId });
+          }}
         />
       )}
     </div>
+  );
+}
+
+function NavBtn({
+  active,
+  onClick,
+  icon,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors',
+        active ? 'text-accent-glow' : 'text-text-muted hover:text-text',
+      )}
+      aria-current={active ? 'page' : undefined}
+    >
+      <span className="relative">
+        {icon}
+        {count != null && count > 0 && (
+          <span className="absolute -right-2.5 -top-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-accent text-white text-[9px] leading-[15px] text-center font-semibold">
+            {count}
+          </span>
+        )}
+      </span>
+      <span>{label}</span>
+      {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-accent-glow" />}
+    </button>
   );
 }

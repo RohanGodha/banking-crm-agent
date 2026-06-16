@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { api, setToken } from '@/lib/api';
 import { Lock, ShieldCheck } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function Login({ onAuth }: { onAuth: () => void }) {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { theme, toggle } = useTheme();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,9 +27,12 @@ export function Login({ onAuth }: { onAuth: () => void }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="fixed top-3 right-3">
+        <ThemeToggle theme={theme} onToggle={toggle} />
+      </div>
       <form
         onSubmit={onSubmit}
-        className="card w-full max-w-sm p-8 space-y-5 animate-fade-in"
+        className="card w-full max-w-sm p-6 sm:p-8 space-y-5 animate-fade-in"
         autoComplete="off"
       >
         <div className="flex items-center gap-3">
@@ -54,7 +60,7 @@ export function Login({ onAuth }: { onAuth: () => void }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input pl-8"
-              placeholder="enter shared password"
+              placeholder="Enter shared password"
               autoFocus
               required
             />

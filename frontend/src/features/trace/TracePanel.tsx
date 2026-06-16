@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useUi } from '@/store/uiStore';
 import { Eye, EyeOff, Sparkles, Wrench, CheckCircle2, AlertTriangle, Zap, GitBranch, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { cap } from '@/lib/format';
 import type { TraceEvent } from '@/lib/types';
 
 const IconFor: Record<string, React.ReactNode> = {
@@ -48,7 +49,7 @@ export function TracePanel() {
           <span className="font-medium">Agent reasoning</span>
           {isStreaming && (
             <span className="badge-accent">
-              <span className="animate-pulse-dot">●</span>&nbsp;running
+              <span className="animate-pulse-dot">●</span>&nbsp;Running
             </span>
           )}
           <span className="text-[11px] text-text-dim">
@@ -114,11 +115,11 @@ function EventRow({ ev }: { ev: TraceEvent }) {
           <div className="text-text">
             <span className="font-mono text-[12px]">{d.tool}</span>
             <span className={cn('ml-2', d.ok ? 'text-positive' : 'text-danger')}>
-              {d.ok ? 'ok' : 'fail'}
+              {d.ok ? 'OK' : 'Failed'}
             </span>
             {d.rows != null && <span className="text-text-dim"> · {d.rows} rows</span>}
             {d.source && (
-              <span className="ml-2 badge text-[10px]">source: {d.source}</span>
+              <span className="ml-2 badge text-[10px]">Source: {d.source}</span>
             )}
             {ev.latency_ms != null && (
               <span className="text-text-dim"> · {ev.latency_ms}ms</span>
@@ -133,7 +134,7 @@ function EventRow({ ev }: { ev: TraceEvent }) {
         <div>
           <div className="text-text">
             Critic: <span className={d.verdict === 'pass' ? 'text-positive' : 'text-warning'}>
-              {d.verdict}
+              {cap(d.verdict)}
             </span>
             {d.replan && <span className="ml-1 text-warning">(replan)</span>}
           </div>

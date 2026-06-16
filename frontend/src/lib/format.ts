@@ -35,3 +35,19 @@ export function maskPhone(phone?: string | null): string {
   if (!phone) return '—';
   return phone.replace(/(\d{2,3})-?(\d+)-(\d{2,3})$/, '$1-•••••-$3');
 }
+
+/** Capitalise the first letter only. e.g. "negative" -> "Negative". */
+export function cap(s?: string | null): string {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Title-case, treating _ and - as word separators. e.g. "churn_risk" -> "Churn Risk". */
+export function titleCase(s?: string | null): string {
+  if (!s) return '';
+  return s
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}

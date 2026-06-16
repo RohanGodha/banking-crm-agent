@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
+import { themeColor } from '@/lib/theme';
 
 /**
  * A compact D3 "thinking" loader: orbiting nodes with a pulsing core, drawn on
@@ -17,8 +18,11 @@ export function D3Loader({ size = 28, label }: { size?: number; label?: string }
 
     const g = svg.append('g').attr('transform', `translate(${c},${c})`);
 
+    const accent = themeColor('accent', '#3b82f6');
+    const accentGlow = themeColor('accent-glow', '#60a5fa');
+
     // core
-    const core = g.append('circle').attr('r', size * 0.1).attr('fill', '#3b82f6');
+    const core = g.append('circle').attr('r', size * 0.1).attr('fill', accent);
 
     const dots = g
       .selectAll('circle.dot')
@@ -27,7 +31,7 @@ export function D3Loader({ size = 28, label }: { size?: number; label?: string }
       .append('circle')
       .attr('class', 'dot')
       .attr('r', size * 0.07)
-      .attr('fill', '#60a5fa');
+      .attr('fill', accentGlow);
 
     const timer = d3.timer((elapsed) => {
       const t = elapsed / 1000;

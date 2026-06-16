@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as d3 from 'd3';
 import { useUi } from '@/store/uiStore';
+import { themeColor } from '@/lib/theme';
 import type { TraceEvent } from '@/lib/types';
 
 /**
@@ -64,15 +65,27 @@ export function AgentFlowD3() {
 
     svg.attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid meet');
 
+    // Theme-aware palette pulled from the active theme's CSS variables.
+    const cAccent = themeColor('accent', '#3b82f6');
+    const cAccentGlow = themeColor('accent-glow', '#60a5fa');
+    const cPositive = themeColor('positive', '#10b981');
+    const cBorder = themeColor('border', '#1f2733');
+    const cBorderStrong = themeColor('border-strong', '#2a3344');
+    const cCard = themeColor('bg-card', '#141923');
+    const cBg = themeColor('bg', '#0a0d12');
+    const cText = themeColor('text', '#e5e7eb');
+    const cTextMuted = themeColor('text-muted', '#9aa3af');
+    const cTextDim = themeColor('text-dim', '#6b7280');
+
     // edges
     const edges = svg.append('g');
     for (let i = 0; i < n - 1; i++) {
       edges.append('line')
         .attr('x1', xs[i]).attr('y1', y).attr('x2', xs[i + 1]).attr('y2', y)
-        .attr('stroke', '#1f2733').attr('stroke-width', 2);
+        .attr('stroke', cBorder).attr('stroke-width', 2);
       edges.append('line').attr('class', `edge-fill-${i}`)
         .attr('x1', xs[i]).attr('y1', y).attr('x2', xs[i]).attr('y2', y)
-        .attr('stroke', '#3b82f6').attr('stroke-width', 2);
+        .attr('stroke', cAccent).attr('stroke-width', 2);
     }
 
     // nodes
@@ -82,19 +95,19 @@ export function AgentFlowD3() {
       const isActive = active === s.key;
       const g = node.append('g').attr('transform', `translate(${xs[i]},${y})`);
       g.append('circle').attr('class', `halo-${i}`).attr('r', 14)
-        .attr('fill', 'none').attr('stroke', '#3b82f6')
+        .attr('fill', 'none').attr('stroke', cAccent)
         .attr('stroke-width', 2).attr('opacity', isActive ? 0.6 : 0);
       g.append('circle').attr('class', `core-${i}`).attr('r', 9)
-        .attr('fill', done ? '#10b981' : isActive ? '#3b82f6' : '#141923')
-        .attr('stroke', done ? '#10b981' : isActive ? '#60a5fa' : '#2a3344')
+        .attr('fill', done ? cPositive : isActive ? cAccent : cCard)
+        .attr('stroke', done ? cPositive : isActive ? cAccentGlow : cBorderStrong)
         .attr('stroke-width', 2);
       if (done) {
         g.append('path').attr('d', 'M-3.5,0 L-1,2.5 L4,-3')
-          .attr('fill', 'none').attr('stroke', '#0a0d12').attr('stroke-width', 1.6)
+          .attr('fill', 'none').attr('stroke', cBg).attr('stroke-width', 1.6)
           .attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
       }
       g.append('text').attr('y', 28).attr('text-anchor', 'middle')
-        .attr('fill', isActive ? '#e5e7eb' : done ? '#9aa3af' : '#6b7280')
+        .attr('fill', isActive ? cText : done ? cTextMuted : cTextDim)
         .attr('font-size', 10).attr('font-weight', isActive ? 600 : 400)
         .text(s.key === 'tools' && toolCount > 0 ? `Retrieve ·${toolCount}` : s.label);
     });
@@ -109,7 +122,7 @@ export function AgentFlowD3() {
     // animate active node halo + flowing particle on the active edge
     const activeIdx = active ? STAGES.findIndex((s) => s.key === active) : -1;
     if (isStreaming) {
-      const particle = svg.append('circle').attr('r', 3).attr('fill', '#60a5fa').attr('opacity', 0);
+      const particle = svg.append('circle').attr('r', 3).attr('fill', cAccentGlow).attr('opacity', 0);
       timerRef.current?.stop();
       timerRef.current = d3.timer((elapsed) => {
         const t = elapsed / 1000;

@@ -43,13 +43,13 @@ export function GuidePanel({
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in z-40" onClick={onClose} />
-      <aside className="fixed right-0 top-0 h-screen w-[620px] max-w-[100vw] bg-bg border-l border-border shadow-2xl z-50 animate-fade-in overflow-hidden flex flex-col">
-        <header className="h-12 px-4 flex items-center justify-between border-b border-border bg-bg-soft">
+      <aside className="fixed right-0 top-0 h-screen w-full sm:w-[560px] lg:w-[620px] max-w-[100vw] bg-bg border-l border-border shadow-pop z-50 animate-slide-in-right overflow-hidden flex flex-col">
+        <header className="shrink-0 h-12 px-4 flex items-center justify-between border-b border-border bg-bg-soft">
           <div className="flex items-center gap-2">
             <Wand2 size={15} className="text-accent-glow" />
-            <span className="text-sm font-semibold">What RM Copilot can do</span>
+            <span className="text-sm font-semibold">What RM Copilot Can Do</span>
           </div>
-          <button onClick={onClose} className="btn-ghost p-1.5"><X size={14} /></button>
+          <button onClick={onClose} className="icon-btn" title="Close"><X size={16} /></button>
         </header>
 
         {/* Status strip */}
@@ -87,7 +87,7 @@ export function GuidePanel({
 
               <section>
                 <Heading icon={<Sparkles size={13} />}>Capabilities</Heading>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
                   {caps.capabilities.map((c) => (
                     <div key={c.title} className="card p-2.5">
                       <div className="text-[12px] font-medium text-text">{c.title}</div>
