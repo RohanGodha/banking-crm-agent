@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.application.tool_registry import tool
 from app.domain import CustomerFilters
@@ -24,12 +24,23 @@ class QueryCustomersIn(BaseModel):
     )
     limit: int = 200
 
+    @field_validator("cities", "segments", "risk_appetite", "exclude_products", mode="before")
+    @classmethod
+    def _wrap_scalar(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return [v]
+        return v
+
 
 class QueryCustomersOut(BaseModel):
     source: str
     rows: int
     customers: list[dict[str, Any]]
     latency_ms: int
+
+
+# Filters dropped first when a strict plan returns nobody, in order of selectivity.
+_RELAXABLE = ("min_income", "max_income", "min_age", "max_age", "risk_appetite")
 
 
 @tool(
@@ -44,12 +55,20 @@ class QueryCustomersOut(BaseModel):
 async def query_customers(args: QueryCustomersIn) -> QueryCustomersOut:
     ds = get_datasource()
     raw = args.model_dump()
-    # Treat 0 as "unset" for range filters — the LLM sometimes emits 0 instead of null.
     for key in ("min_income", "max_income", "min_balance", "min_age", "max_age"):
         if key in raw and raw[key] == 0:
             raw[key] = None
-    filters = CustomerFilters(**raw)
-    res = await ds.find_customers(filters)
+
+    res = await ds.find_customers(CustomerFilters(**raw))
+
+    if res.rows == 0:
+        relaxed = {**raw, **{k: None for k in _RELAXABLE}}
+        res = await ds.find_customers(CustomerFilters(**relaxed))
+
+    if res.rows == 0:
+        minimal = {"exclude_products": raw.get("exclude_products"), "limit": raw.get("limit") or 80}
+        res = await ds.find_customers(CustomerFilters(**minimal))
+
     return QueryCustomersOut(
         source=res.source,
         rows=res.rows,
