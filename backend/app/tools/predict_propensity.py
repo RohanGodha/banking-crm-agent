@@ -3,17 +3,24 @@ from __future__ import annotations
 import asyncio
 import time
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.application.tool_registry import tool
 from app.domain import ScoreBreakdown
 from app.infrastructure.datasource import get_datasource
 from app.scoring.propensity import predict_propensity
 
+_DEFAULT_PRODUCT = "PROD-LOAN-PL"
+
 
 class PredictPropensityIn(BaseModel):
     customer_ids: list[str]
-    product_id: str
+    product_id: str = _DEFAULT_PRODUCT
+
+    @field_validator("product_id", mode="before")
+    @classmethod
+    def _default_product(cls, v: object) -> object:
+        return v if isinstance(v, str) and v.strip() else _DEFAULT_PRODUCT
 
 
 class CustomerPropensity(BaseModel):

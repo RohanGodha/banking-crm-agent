@@ -62,7 +62,7 @@ def hero_customers() -> list[HeroCustomer]:
             segment="hnw",
             employment="salaried",
             monthly_income=320000,
-            phone="+91-98200-11001",
+            phone="+91-70371-48039",
             email="priya.sharma@example.in",
             account_open_years_ago=6,
             balance=5800000,

@@ -50,8 +50,14 @@ async def run_synthesizer(state: AgentState) -> AgentState:
     else:
         w_value, w_prop = 0.4, 0.6
 
+    # Rank over every customer we scored. Propensity is preferred, but if that
+    # step returned nothing (e.g. no product specified) we still surface the
+    # customers found by value/query so a lookup never yields an empty result.
+    ranked_ids = list(prop_map) or list(value_map) or list(customer_map)
+
     candidates: list[CandidateRecord] = []
-    for cid, prop in prop_map.items():
+    for cid in ranked_ids:
+        prop = prop_map.get(cid, {})
         v = value_map.get(cid, {})
         val_score = float(v.get("value_score", 0.0))
         prop_score = float(prop.get("propensity_score", 0.0))
