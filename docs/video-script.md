@@ -1,109 +1,141 @@
-# RM Copilot — Demo Video Script (~7 minutes)
+# RM Copilot — Demo Video Script (full technical walkthrough, ~8–9 minutes)
 
-Structured for a problem → solution → impact narrative, with explicit on-screen cues
-(**what to show where**) and spoken narration for each segment.
+This script narrates the system end-to-end: the problem, the architecture and the
+reasoning behind each choice (RAG, the LLMs, the databases, caching, the request
+lifecycle), and then a complete live demo. Each segment lists **what to show** and
+**what to say**.
 
 ---
 
 ## Pre-recording checklist
 
-- [ ] Warm the backend: open `https://banking-crm-agent.onrender.com/healthz` once (free-tier cold start is ~50s).
-- [ ] Confirm LLM quota is fresh — avoid running many test queries immediately before recording.
-- [ ] For the WhatsApp segment: run locally with `frontend/.env.local` set, and stay logged into WhatsApp Web in the same browser (or set `VITE_DEMO_PHONES` in Vercel and redeploy).
-- [ ] Browser at 100% zoom, notifications off, record at 1080p, start in dark theme.
-- [ ] Have a mobile view ready (DevTools device toolbar) for the responsive segment.
+- [ ] Warm the backend: open `https://banking-crm-agent.onrender.com/healthz` once (free-tier cold start ~50s).
+- [ ] Confirm LLM quota is fresh (avoid many test queries right before recording).
+- [ ] WhatsApp segment: run locally with `frontend/.env.local` set and WhatsApp Web logged in, OR set `VITE_DEMO_PHONES` in Vercel and redeploy. Map at least one customer to your own number so the chat definitely opens (see the WhatsApp note at the end).
+- [ ] Browser at 100% zoom, notifications off, 1080p, dark theme to start.
+- [ ] Open the README architecture diagram in a second tab; have a mobile view ready (DevTools device toolbar).
 
 ---
 
-## Segment 1 — Problem statement (0:00–0:50)
+## Part 1 — Problem statement (0:00–0:45)
 
 **Show:** Title slide, then the login screen.
 
 **Say:**
-> "Every retail bank runs on its Relationship Managers. Each RM owns 200 to 500 customers, and every morning they face the same two questions: *who should I call today, and what should I say?*
->
-> Today they answer this manually — exporting CRM lists, eyeballing spreadsheets, guessing at propensity, and writing outreach by hand. It's slow, inconsistent, and in banking it carries compliance risk, because a single wrong number in a customer message is a regulatory problem.
->
-> RM Copilot turns that entire workflow into one conversation."
+> "Every retail bank runs on its Relationship Managers. Each RM owns 200 to 500 customers, and every morning they ask the same two questions: who should I call today, and what should I say? Today that's manual — exporting CRM lists, guessing at propensity, and writing outreach by hand. It's slow, inconsistent, and in banking a single wrong number in a message is a compliance problem. RM Copilot turns that entire workflow into one conversation."
 
 ---
 
-## Segment 2 — Solution overview (0:50–1:30)
+## Part 2 — Architecture and design rationale (0:45–2:45)
 
-**Show:** Sign in with `shared`; the three-pane dashboard loads. Briefly toggle the theme; point across the panes.
+**Show:** The architecture diagram from the README.
+
+### 2a. What we built and the high-level shape
 
 **Say:**
-> "RM Copilot is an agentic AI assistant. The RM asks in plain language, and the system decomposes the request, pulls live customer and transaction data, scores each customer transparently, recommends a product, and drafts a compliance-checked WhatsApp message — all streamed live so the reasoning is visible, not a black box.
->
-> It's a full-stack build: React and Vite on the front end, FastAPI and an agent orchestrator on the back end, real LLMs with retrieval-augmented generation, deployed entirely on free tiers."
+> "The system has three layers. A React front end on Vercel; a FastAPI back end on Render that runs the agent; and a data and AI layer underneath. We used a hexagonal architecture — ports and adapters — so the agent never talks to a vendor directly. It talks to interfaces, and we can swap the database or the LLM behind them without touching the core."
+
+### 2b. Why an agent, and why RAG + LLMs
+
+**Say:**
+> "Why an agent and not a single LLM call? Because the task is multi-step: retrieve data, score it, recommend a product, draft a message. So a planner decomposes the request into typed tool calls, an executor runs them, and a critic checks each result. The LLM does the reasoning and the language; the tools do the deterministic work against real data. RAG — retrieval-augmented generation — grounds the drafts: we retrieve each customer's real interaction notes so the message references actual behaviour, not a hallucination."
+
+### 2c. Which LLMs, by provider — main and fallback
+
+**Say:**
+> "We use two LLM providers, by cognitive load. Google's Gemini 2.0 Flash handles reasoning — planning, criticism, synthesis — because it's reliable at structured JSON output, and Google's text-embedding-004 powers retrieval. Groq's Llama 3.3 70B handles generation — the WhatsApp drafts — because it's extremely fast and we fan out many drafts in parallel. Behind both sits a deterministic mock, so the whole pipeline runs offline with no API keys. The router tries the primary, then the secondary, then the mock, with per-provider rate limiting and one retry, so a free-tier limit degrades gracefully instead of breaking."
+
+### 2d. Databases — what's stored where, and why
+
+**Say:**
+> "On data: the live store is SQLite in WAL mode — zero-cost, reliable, and the schema reseeds deterministically on every boot, which keeps the demo reproducible. For enterprise scale we have a Databricks Delta adapter behind the same interface, with automatic failover back to SQLite on a timeout. And for retrieval we use Chroma as a dense vector store combined with BM25 keyword search — hybrid retrieval, fused and re-ranked — over the interaction notes."
+
+### 2e. Caching
+
+**Say:**
+> "For performance on a constrained tier, the settings, the LLM router, the data source, and the retrieval index are all cached singletons — built once and reused. The RAG corpus is embedded once at startup and held in memory, and prompts are cached too. SQLite's WAL mode keeps concurrent reads fast."
 
 ---
 
-## Segment 3 — How we solved it, live (1:30–5:30)
+## Part 3 — Request lifecycle and analytics (2:45–3:30)
 
-### 3a. The canonical query (1:30–3:10)
+**Show:** The reasoning trace / live pipeline area (you can reference it now and again during the demo).
 
-**Show:** Type the exact assignment query and submit; let the live pipeline animate:
+**Say:**
+> "Here's the full lifecycle of one request. The query hits the FastAPI endpoint through an auth middleware — a shared-token gate. It enters the agent: first an intent router decides whether it's a task, a follow-up, an FAQ, or out of scope. For a task, the planner emits a typed plan; the executor runs each tool — querying customers, scoring value and propensity, recommending a product, and retrieving notes via RAG; the critic validates each step; the synthesizer ranks the candidates and writes the summary; and the message generator drafts the outreach. Every node emits a typed event that's streamed live to the UI over server-sent events — that's the analytics you'll see: the pipeline animation, the per-tool source and latency tags, and the transparent score breakdowns. The same events are persisted to a trace table for audit."
+
+---
+
+## Part 4 — Live demo (3:30–7:30)
+
+### 4a. Login and interface (3:30–4:00)
+
+**Show:** Sign in with `shared`. The three-pane dashboard loads. Toggle the theme once. Point across the panes.
+
+**Say:**
+> "Let's see it. I sign in — this is a single-tenant demo gate. Three panes: conversations on the left, the copilot in the center, candidates on the right. Full light and dark theming, and as we'll see, fully responsive."
+
+### 4b. The canonical query — the full flow (4:00–5:40)
+
+**Show:** Type the exact assignment query and submit; let the pipeline animate, then expand the reasoning trace.
 > `Find high-value customers likely to convert for a personal loan this month and generate personalized WhatsApp messages.`
 
 **Say:**
-> "Here's the assignment's own use case. Watch the pipeline below — this is the agent's real execution flow: Intent, Plan, Retrieve, Critic, Synthesize, Draft."
+> "This is the assignment's own use case. Watch the pipeline: Intent, Plan, Retrieve, Critic, Synthesize, Draft. The planner broke this into five typed tool calls. Each tool result is tagged with its data source and latency. Retrieval is the hybrid RAG step."
 
-**Show:** Expand the "Agent reasoning" trace. Point to the planner, the five tool calls, the `source` and latency tags, and the hybrid RAG step.
-
-**Say:**
-> "The planner decomposed the request into five typed tool calls — query customers, score value, predict propensity, recommend product, and retrieve interaction notes. Each result is tagged with its data source and latency for auditability, and retrieval is hybrid: dense embeddings combined with keyword search."
-
-### 3b. Identify high-value customers + conversion likelihood (3:10–3:50)
-
-**Show:** Candidates populate on the right with composite-score rings. Click the top candidate to open Customer 360; point to the score-breakdown chart.
+**Show:** Candidates appear on the right. Click the top candidate → Customer 360 drawer. Point to the score breakdown, the recommended product, then the WhatsApp draft and the "Compliance OK" badge.
 
 **Say:**
-> "Candidates rank in real time. The composite score combines customer value and conversion propensity — and critically, it's transparent. This breakdown shows exactly which features drove the score. Nothing is hardcoded; these surface through real scoring of the underlying data."
+> "Candidates rank in real time by a composite of value and propensity — and it's transparent: this breakdown shows the exact features behind the score, nothing hardcoded. For each customer the agent recommends a product and drafts a personalized message grounded in that customer's real signals. The compliance validator checks every number against the source data and strips anything ungrounded — that's the regulatory safeguard."
 
-### 3c. Recommend product + personalized, compliant outreach (3:50–4:40)
+### 4c. Send on WhatsApp (5:40–6:00)
 
-**Show:** In the drawer, point to the recommended product, then the WhatsApp draft and the "Compliance OK" badge. Click "Send on WhatsApp" — WhatsApp Web opens with the message pre-filled.
+**Show:** Click "Send on WhatsApp" → WhatsApp Web opens with the message pre-filled.
 
 **Say:**
-> "For each customer the agent recommends a suitable product and drafts a personalized WhatsApp message grounded in that customer's real signals. A compliance validator checks every number in the draft against the source data and strips anything ungrounded — directly addressing the regulatory risk I mentioned. The RM clicks send on WhatsApp, reviews, and sends: human in the loop."
+> "The RM clicks Send on WhatsApp — it opens WhatsApp Web with the message pre-filled. The RM reviews and sends: human in the loop, by design."
 
-### 3d. Stateful refinement — use case 2 (4:40–5:05)
+### 4d. Stateful refinement — use case 2 (6:00–6:25)
 
-**Show:** Same session, type:
+**Show:** Same session:
 > `Now narrow it to Bangalore customers and make the messages warmer.`
 
 **Say:**
-> "The system holds context. I don't repeat myself — I just refine. It re-plans with a city filter and a warmer tone, and the candidate list and drafts update accordingly."
+> "The system holds context. I just refine — only Bangalore, warmer tone — and it re-plans; the candidates and drafts update."
 
-### 3e. Reasoning, not hardcoding — use case 3 (5:05–5:30)
+### 4e. Reasoning, not hardcoding — use case 3 (6:25–6:50)
 
 **Show:** New query:
 > `Show me customers with a salary-credit slowdown — what should we offer them?`
 
 **Say:**
-> "And to prove it reasons: a salary slowdown is a retention signal, so the agent chooses an overdraft instead of a loan, and surfaces at-risk customers flagged for churn. Different intent, different product, different segment — driven by the data."
+> "And to prove it reasons: a salary slowdown is a retention signal, so the agent picks an overdraft instead of a loan and surfaces at-risk customers flagged for churn. Different intent, different product — driven by the data."
 
----
+### 4f. Guardrails, FAQ, Guide (6:50–7:10)
 
-## Segment 4 — Breadth & robustness (5:30–6:30)
-
-**Show:** (a) An out-of-scope query — `Write a poem about Mumbai rain` — politely declined. (b) A capability question — `What products can you recommend?` — grounded answer. (c) Open the Guide panel. (d) Switch to mobile view and use the bottom navigation.
+**Show:** `Write a poem about Mumbai rain` (declined); `What products can you recommend?` (grounded answer); open the Guide panel.
 
 **Say:**
-> "Guardrails keep it on-task: anything outside banking is declined, and capability questions are answered from a grounded knowledge base. There's a Guide panel exposing every capability and a live system status. And the whole interface is responsive and theme-aware — usable by an RM in the field."
+> "Guardrails keep it on task — out-of-scope requests are declined, and capability questions are answered from a grounded knowledge base. The Guide panel exposes every capability and the live system status."
+
+### 4g. Responsive / mobile (7:10–7:30)
+
+**Show:** Enable the DevTools device toolbar → mobile view. Use the bottom navigation to switch panes; toggle the theme.
+
+**Say:**
+> "And it's fully responsive — bottom navigation on mobile, full theme support — so an RM can use it in the field."
 
 ---
 
-## Segment 5 — Architecture trade-offs & impact (6:30–7:30)
+## Part 5 — Trade-offs and impact (7:30–8:30)
 
-**Show:** The architecture diagram from the README.
+**Show:** Architecture diagram again, or a closing slide.
 
-**Say (architecture & trade-offs):**
-> "Architecturally, it's hexagonal: ports and adapters let us fail over from Databricks to SQLite, and route across Gemini, Groq, and an offline mock, with no change to the agent. The trade-offs are deliberate — transparent heuristic scoring over a black-box model for auditability and reproducibility; typed tools over free-form SQL for safety; and graceful degradation everywhere, so a free-tier outage never breaks the demo."
+**Say (trade-offs):**
+> "The trade-offs were deliberate: transparent heuristic scoring over a black-box model, for auditability; typed tools over free-form SQL, for safety; and graceful degradation everywhere, so a free-tier outage never breaks the product."
 
 **Say (impact):**
-> "The impact: what takes an RM roughly ninety minutes of manual research every morning becomes a five-minute conversation — with a fully auditable trail that satisfies banking compliance. Scaled across thousands of RMs, that's a direct lift in outreach volume, conversion, and consistency. Thank you — the repository and live link are in the description."
+> "The impact: roughly ninety minutes of manual research each morning becomes a five-minute conversation, with a fully auditable trail that satisfies banking compliance. Scaled across thousands of RMs, that's a direct lift in outreach volume, conversion, and consistency. Thank you — the repository and live link are in the description."
 
 ---
 
@@ -115,14 +147,17 @@ Structured for a problem → solution → impact narrative, with explicit on-scr
 4. `Write a poem about Mumbai rain.` *(guardrail)*
 5. `What products can you recommend?` *(FAQ)*
 
+## Quick reference — the stack to name on camera
+
+- **Front end:** React + Vite + TypeScript + Tailwind, Zustand state, SSE streaming, D3 visuals — on Vercel.
+- **Back end:** FastAPI + Uvicorn (async), hexagonal agent orchestrator — on Render.
+- **Middleware:** shared-token auth gate; server-sent events for streaming.
+- **LLMs:** Google Gemini 2.0 Flash (reasoning) + text-embedding-004 (embeddings); Groq Llama 3.3 70B (drafts); deterministic mock fallback.
+- **Databases:** SQLite (WAL) live store; Databricks Delta optional warehouse with failover; Chroma + BM25 for hybrid RAG.
+- **Caching:** cached singletons for settings, router, data source, and the in-memory RAG index; cached prompts.
+
 ## Contingencies
 
-- **Drafts show "mock":** LLM quota exhausted — pause, wait a few minutes, confirm a single call to `/tools/generate_whatsapp_message` returns `llm_route=groq`, then resume.
-- **First query slow:** backend was cold — run one throwaway query to warm it.
-- **WhatsApp "not on WhatsApp":** the customer is not mapped in `VITE_DEMO_PHONES`; use a mapped customer (Priya, Aarav, Ananya, Vikram, or Neha).
-
-## Delivery tips
-
-- Speak slightly slowly; pause 1–2 seconds after each segment to ease editing.
-- Point with the cursor when saying "source", "Compliance OK", and "composite score".
-- Target total length: 6–8 minutes (the assignment allows 5–10).
+- **Drafts show "mock":** quota exhausted — pause, wait, confirm `/tools/generate_whatsapp_message` returns `llm_route=groq`, resume.
+- **First query slow:** backend was cold — run one throwaway query first.
+- **WhatsApp "not on WhatsApp":** the customer isn't mapped, or the number isn't a registered WhatsApp account — see the WhatsApp note below; map a customer to your own number to guarantee the chat opens.
