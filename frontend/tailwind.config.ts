@@ -4,12 +4,6 @@ const config: Config = {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
-    // Explicit, well-documented breakpoints so every panel is window-size aware.
-    //   xs  – large phones (landscape) / small tablets
-    //   sm  – default Tailwind 640
-    //   md  – tablets / split-screen windows
-    //   lg  – the threshold where the full 3-column desktop layout kicks in
-    //   xl/2xl – wide desktops
     screens: {
       xs: '480px',
       sm: '640px',
@@ -24,10 +18,6 @@ const config: Config = {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
-        // Theme-aware tokens. Actual values are CSS variables (space-separated
-        // RGB channels) defined in globals.css for :root (light) and .dark.
-        // The `<alpha-value>` placeholder keeps Tailwind opacity modifiers
-        // (e.g. bg-accent/15) working across both themes.
         bg: {
           DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
           soft: 'rgb(var(--c-bg-soft) / <alpha-value>)',

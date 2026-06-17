@@ -44,9 +44,7 @@ class QueryCustomersOut(BaseModel):
 async def query_customers(args: QueryCustomersIn) -> QueryCustomersOut:
     ds = get_datasource()
     raw = args.model_dump()
-    # The LLM often emits 0 instead of null for unset min/max thresholds,
-    # and 0 values for age/balance/income filters are meaningless (they
-    # would produce WHERE age <= 0, killing all results). Treat them as None.
+    # Treat 0 as "unset" for range filters — the LLM sometimes emits 0 instead of null.
     for key in ("min_income", "max_income", "min_balance", "min_age", "max_age"):
         if key in raw and raw[key] == 0:
             raw[key] = None

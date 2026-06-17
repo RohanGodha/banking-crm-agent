@@ -13,13 +13,11 @@ from .base import LLMClient, LLMMessage, LLMResponse
 
 logger = get_logger(__name__)
 
-# Gemini free tier: 60 RPM. We set 36 RPM to leave headroom.
+# Free-tier limit is ~60 RPM; stay under it.
 _MAX_RPM_GEMINI = 36
 
 
 class _TokenBucket:
-    """Simple token-bucket rate limiter — one token per request, refilled at _MAX_RPM per 60s."""
-
     def __init__(self, rate: float, window: float = 60.0) -> None:
         self._rate = rate
         self._window = window
@@ -35,7 +33,6 @@ class _TokenBucket:
             self._last_refill = now
             if self._tokens < 1.0:
                 wait = (1.0 - self._tokens) * (self._window / self._rate)
-                logger.info("Gemini rate limit pause: %.1fs", wait)
                 await asyncio.sleep(wait)
                 self._tokens = 0.0
                 self._last_refill = time.monotonic()

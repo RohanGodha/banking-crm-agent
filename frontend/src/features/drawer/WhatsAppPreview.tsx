@@ -29,7 +29,6 @@ export function WhatsAppPreview({
   }
 
   async function sendOnWhatsApp() {
-    // Copy as a safety net in case the pre-fill is blocked, then open the chat.
     try {
       await navigator.clipboard.writeText(savedText);
     } catch {/* clipboard unavailable */}

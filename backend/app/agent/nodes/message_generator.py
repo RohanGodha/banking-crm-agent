@@ -1,9 +1,4 @@
-"""MessageGenerator node — concurrency-limited WhatsApp drafts (grounded).
-
-Free-tier LLMs have per-minute request limits. Firing 10 drafts at once can trip
-429s and silently fall through to the offline mock. We cap concurrency with a
-semaphore so the burst stays under the rate limit while remaining fast.
-"""
+"""MessageGenerator node — parallel WhatsApp drafts, grounded and compliance-checked."""
 from __future__ import annotations
 
 import asyncio
@@ -12,7 +7,6 @@ from app.agent.state import AgentState, DraftRecord, TraceEvent
 from app.application.tool_registry import invoke_tool
 from app.domain import ScoreBreakdown
 
-# Max simultaneous draft generations (keeps us under Groq/Gemini free RPM).
 _MAX_CONCURRENCY = 4
 
 

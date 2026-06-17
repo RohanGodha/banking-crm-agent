@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { applyTheme, getInitialTheme, getStoredTheme, type Theme } from '@/lib/theme';
 
-/**
- * Theme state with localStorage persistence. Falls back to the OS preference
- * and live-follows it until the user makes an explicit choice.
- */
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
 
@@ -12,7 +8,6 @@ export function useTheme() {
     applyTheme(theme);
   }, [theme]);
 
-  // Follow the OS preference until the user explicitly picks a theme.
   useEffect(() => {
     if (getStoredTheme()) return;
     const mq = window.matchMedia('(prefers-color-scheme: light)');
@@ -24,10 +19,7 @@ export function useTheme() {
   }, []);
 
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
-  const toggle = useCallback(
-    () => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')),
-    [],
-  );
+  const toggle = useCallback(() => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')), []);
 
   return { theme, setTheme, toggle };
 }

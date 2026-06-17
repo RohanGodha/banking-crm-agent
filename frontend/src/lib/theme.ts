@@ -1,5 +1,3 @@
-/** Light/dark theme persistence + DOM application. */
-
 export type Theme = 'light' | 'dark';
 
 const STORAGE_KEY = 'rmcopilot-theme';
@@ -25,7 +23,6 @@ export function getInitialTheme(): Theme {
   return getStoredTheme() ?? getSystemTheme();
 }
 
-/** Apply a theme to <html>, persist it, and sync the mobile browser chrome colour. */
 export function applyTheme(theme: Theme): void {
   const root = document.documentElement;
   root.classList.toggle('dark', theme === 'dark');
@@ -33,17 +30,12 @@ export function applyTheme(theme: Theme): void {
   try {
     localStorage.setItem(STORAGE_KEY, theme);
   } catch {
-    /* storage unavailable */
+    // storage unavailable
   }
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#0a0d12' : '#f7f8fa');
 }
 
-/**
- * Read a theme colour token (e.g. 'accent', 'bg-card') as a usable CSS color,
- * resolved from the current theme's CSS variables. For SVG/Canvas (D3) where
- * Tailwind classes don't apply.
- */
 export function themeColor(token: string, fallback = '#3b82f6'): string {
   try {
     const v = getComputedStyle(document.documentElement)

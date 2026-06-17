@@ -41,7 +41,6 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="h-screen flex flex-col bg-bg text-text overflow-hidden">
-      {/* ─────────────────────────── Top bar ─────────────────────────── */}
       <header className="shrink-0 h-12 flex items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-bg-soft/60 backdrop-blur">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="h-7 w-7 shrink-0 rounded-md bg-accent/15 border border-accent-soft/40 flex items-center justify-center">
@@ -56,7 +55,6 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3 text-[11px] text-text-muted">
-          {/* Status badges — progressively revealed as the window widens. */}
           {status && (
             <>
               <span className="badge hidden lg:inline-flex">
@@ -89,9 +87,6 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </header>
 
-      {/* ─────────────────────────── Main panes ─────────────────────────
-          lg+  → fixed 3-column workspace.
-          <lg  → one pane at a time, switched via the bottom tab bar.       */}
       <main className="flex-1 overflow-hidden lg:grid lg:grid-cols-[260px_1fr_440px] xl:grid-cols-[300px_1fr_460px]">
         <aside
           className={cn(
@@ -121,7 +116,6 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         </aside>
       </main>
 
-      {/* ─────────────────── Mobile / tablet bottom nav ─────────────────── */}
       <nav className="lg:hidden shrink-0 flex items-stretch border-t border-border bg-bg-soft/85 backdrop-blur pb-safe">
         <NavBtn
           active={mobilePane === 'sessions'}

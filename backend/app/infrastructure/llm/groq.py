@@ -13,15 +13,11 @@ from .base import LLMClient, LLMMessage, LLMResponse
 
 logger = get_logger(__name__)
 
-# Conservative rate limit for Groq free tier. Llama 3.3 70B is limited to ~30 RPM
-# on the free plan; we enforce 24 RPM (one call every 2.5s on average) so bursts
-# from parallel draft generation stay well within quota.
+# Free-tier limit for llama-3.3-70b is ~30 RPM; stay under it.
 _MAX_RPM = 24
 
 
 class _TokenBucket:
-    """Simple token-bucket rate limiter — one token per request, refilled at _MAX_RPM per 60s."""
-
     def __init__(self, rate: float = _MAX_RPM, window: float = 60.0) -> None:
         self._rate = rate
         self._window = window
@@ -37,7 +33,6 @@ class _TokenBucket:
             self._last_refill = now
             if self._tokens < 1.0:
                 wait = (1.0 - self._tokens) * (self._window / self._rate)
-                logger.info("Groq rate limit pause: %.1fs", wait)
                 await asyncio.sleep(wait)
                 self._tokens = 0.0
                 self._last_refill = time.monotonic()
@@ -81,11 +76,7 @@ class GroqClient(LLMClient):
         }
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        try:
-            resp = await client.chat.completions.create(**kwargs)
-        except Exception as e:
-            logger.error("Groq API call failed: model=%s kind=json_mode=%s err=%s", self.settings.groq_model, json_mode, e)
-            raise
+        resp = await client.chat.completions.create(**kwargs)
         text = (resp.choices[0].message.content or "").strip()
         json_data = None
         if json_mode:
@@ -107,7 +98,6 @@ class GroqClient(LLMClient):
         )
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        # Groq doesn't offer embeddings; embeddings always go via the router to Gemini
         raise NotImplementedError("Groq does not provide embeddings.")
 
     async def health(self) -> bool:
