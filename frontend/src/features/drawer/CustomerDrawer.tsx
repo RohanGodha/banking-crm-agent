@@ -10,7 +10,8 @@ import { D3Loader } from '@/features/trace/D3Loader';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export function CustomerDrawer({ customerId }: { customerId: string }) {
-  const close = useUi((s) => () => s.setSelectedCustomerId(null));
+  const setSelectedCustomerId = useUi((s) => s.setSelectedCustomerId);
+  const close = () => setSelectedCustomerId(null);
   const candidate = useUi((s) =>
     s.candidates.find((c) => c.customer_id === customerId) || null,
   );
