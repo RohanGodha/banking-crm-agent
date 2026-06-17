@@ -22,7 +22,7 @@ class QueryCustomersIn(BaseModel):
         default=None,
         description="Skip customers who already hold any of these product IDs.",
     )
-    limit: int = 200
+    limit: int = Field(default=200, ge=1, le=1000)
 
     @field_validator("cities", "segments", "risk_appetite", "exclude_products", mode="before")
     @classmethod

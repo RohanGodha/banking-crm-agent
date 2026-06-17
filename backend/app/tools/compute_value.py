@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from app.application.tool_registry import tool
 from app.domain import ScoreBreakdown
@@ -11,8 +11,13 @@ from app.scoring.value import compute_value
 
 
 class ComputeValueIn(BaseModel):
-    customer_ids: list[str]
-    months: int = 6
+    customer_ids: list[str] = Field(default_factory=list)
+    months: int = Field(default=6, ge=1, le=24)
+
+    @field_validator("customer_ids", mode="before")
+    @classmethod
+    def _wrap_scalar(cls, v: object) -> object:
+        return [v] if isinstance(v, str) else v
 
 
 class CustomerValue(BaseModel):

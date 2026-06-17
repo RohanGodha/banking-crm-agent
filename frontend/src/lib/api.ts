@@ -24,20 +24,32 @@ export function authHeaders(extra?: Record<string, string>): Record<string, stri
   return { 'X-Access-Token': token, ...(extra || {}) };
 }
 
-async function jfetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...(init?.headers || {}),
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${res.statusText}: ${text || path}`);
+async function jfetch<T>(path: string, init?: RequestInit, timeoutMs = 30000): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      signal: ctrl.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+        ...(init?.headers || {}),
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`${res.status} ${res.statusText}: ${text || path}`);
+    }
+    return res.json() as Promise<T>;
+  } catch (e: any) {
+    if (e?.name === 'AbortError') {
+      throw new Error(`Request timed out. The server may be waking up — please retry.`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json() as Promise<T>;
 }
 
 export const api = {

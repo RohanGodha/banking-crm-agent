@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.application.tool_registry import tool
 from app.domain import ScoreBreakdown
@@ -14,13 +14,18 @@ _DEFAULT_PRODUCT = "PROD-LOAN-PL"
 
 
 class PredictPropensityIn(BaseModel):
-    customer_ids: list[str]
+    customer_ids: list[str] = Field(default_factory=list)
     product_id: str = _DEFAULT_PRODUCT
 
     @field_validator("product_id", mode="before")
     @classmethod
     def _default_product(cls, v: object) -> object:
         return v if isinstance(v, str) and v.strip() else _DEFAULT_PRODUCT
+
+    @field_validator("customer_ids", mode="before")
+    @classmethod
+    def _wrap_scalar(cls, v: object) -> object:
+        return [v] if isinstance(v, str) else v
 
 
 class CustomerPropensity(BaseModel):

@@ -211,6 +211,22 @@ function ProfileBlock({
         <Stat label="Avg balance (6m)" value={inr(customer.avg_balance_6m, { compact: true })} />
         <Stat label="Tenure" value={truncate(customer.account_open_date, 10)} />
       </div>
+      {candidate?.next_action && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-accent-soft/40 bg-accent/10 px-3 py-2">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-text-dim">Recommended action</div>
+            <div className="text-sm font-medium text-text">{candidate.next_action}</div>
+          </div>
+          {candidate.opportunity_value ? (
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-wider text-text-dim">Est. opportunity</div>
+              <div className="text-sm font-semibold text-positive">
+                {inr(candidate.opportunity_value, { compact: true })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

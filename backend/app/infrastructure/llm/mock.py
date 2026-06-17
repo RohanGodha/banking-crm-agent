@@ -259,11 +259,10 @@ class MockLLM(LLMClient):
         return text, {"summary": text}
 
     def _whatsapp(self, user: str) -> tuple[str, dict[str, Any]]:
-        """Extract customer name + product name from the structured user payload."""
+        """Build a data-grounded draft from the structured payload (name, product, signals)."""
         name = "there"
         product = "this offering"
         rm = "Rohan"
-        # The prompt has two YAML-ish blocks: Customer: { name: X } and Product: { name: Y }
         cust_match = re.search(r"Customer:\s*\n\s*name:\s*([^\n]+)", user, re.IGNORECASE)
         if cust_match:
             name = cust_match.group(1).strip().split()[0]
@@ -273,9 +272,23 @@ class MockLLM(LLMClient):
         rm_match = re.search(r"RM:\s*([A-Za-z]+)", user)
         if rm_match:
             rm = rm_match.group(1).strip()
+
+        signals = user.lower()
+        if "no active loan" in signals or "no_existing_loan" in signals:
+            observation = "I noticed you don't currently hold a loan with us"
+        elif "balance" in signals:
+            observation = "given the healthy balances you maintain with us"
+        elif "salary" in signals or "income" in signals:
+            observation = "based on your salary relationship with us"
+        elif "large" in signals and "debit" in signals:
+            observation = "following some recent large transactions on your account"
+        else:
+            observation = "based on your recent activity with us"
+
+        warm = "warm" in signals
+        opener = f"Hi {name}," if warm else f"Hello {name},"
         text = (
-            f"Hi {name}, hope you're doing well. Based on your recent banking activity with us, "
-            f"I thought you'd find our {product} a great fit. Happy to share details whenever "
-            f"works for you. -- {rm}"
+            f"{opener} {observation}, our {product} could be a strong fit for you. "
+            f"I'd be glad to walk you through the specifics — would a quick call this week work? — {rm}"
         )
         return text, {"message": text}

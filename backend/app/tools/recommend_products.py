@@ -4,7 +4,7 @@ import asyncio
 import time
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from app.application.tool_registry import tool
 from app.infrastructure.datasource import get_datasource
@@ -12,9 +12,14 @@ from app.scoring.propensity import predict_propensity
 
 
 class RecommendIn(BaseModel):
-    customer_ids: list[str]
+    customer_ids: list[str] = Field(default_factory=list)
     candidate_product_ids: list[str] | None = None
-    top_k: int = 1
+    top_k: int = Field(default=1, ge=1, le=7)
+
+    @field_validator("customer_ids", "candidate_product_ids", mode="before")
+    @classmethod
+    def _wrap_scalar(cls, v: object) -> object:
+        return [v] if isinstance(v, str) else v
 
 
 class Recommendation(BaseModel):

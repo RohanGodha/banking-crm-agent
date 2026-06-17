@@ -120,7 +120,11 @@ async def run_synthesizer(state: AgentState) -> AgentState:
         c.sentiment = s["sentiment"]
         c.escalate = s["escalate"]
         c.churn_risk = s["churn_risk"]
+        c.opportunity_value = _estimate_opportunity(c.recommended_product_id, c.monthly_income, c.avg_balance_6m)
+        c.next_action, c.priority = _next_action(c)
 
+    # Re-rank so urgent/high-intent customers lead the action queue.
+    candidates.sort(key=lambda c: (c.priority, -c.composite_score))
     state.candidates = candidates
 
     # Emit candidate events progressively for the UI
@@ -143,7 +147,8 @@ async def run_synthesizer(state: AgentState) -> AgentState:
     router = get_llm_router()
     context_for_llm = "\n".join(
         f"- {c.name} ({c.city}, {c.segment}) — composite {c.composite_score:.2f}, "
-        f"product: {c.recommended_product_name}; top signal: "
+        f"product: {c.recommended_product_name}, est. opportunity {_fmt_inr(c.opportunity_value) or 'n/a'}, "
+        f"action: {c.next_action}; top signal: "
         f"{(c.top_features[0]['rationale'] if c.top_features else 'value+propensity composite')}"
         for c in candidates[:5]
     )
@@ -156,11 +161,75 @@ async def run_synthesizer(state: AgentState) -> AgentState:
         temperature=0.4,
         max_tokens=320,
     )
-    state.final_summary = resp.text.strip()
+    text = resp.text.strip()
+    route = resp.meta.get("route_used", resp.provider)
+    # Never surface generic filler: if the LLM is unavailable (mock) or returns
+    # nothing, build a specific, data-grounded summary from the real candidates.
+    if route == "mock" or len(text) < 20:
+        text = _fallback_summary(candidates)
+    state.final_summary = text
     state.emit(TraceEvent(
         event="synth",
         data={"summary": state.final_summary, "candidate_count": len(candidates)},
-        llm_route=resp.meta.get("route_used", resp.provider),
+        llm_route=route,
         latency_ms=resp.latency_ms,
     ))
     return state
+
+
+def _estimate_opportunity(product_id: str, monthly_income: float | None, avg_balance: float | None) -> float | None:
+    """Rough, defensible estimate of the opportunity size (INR) to help the RM prioritise."""
+    income = float(monthly_income or 0)
+    balance = float(avg_balance or 0)
+    if not income and not balance:
+        return None
+    pid = product_id or ""
+    if pid == "PROD-LOAN-HL":
+        return round(min(income * 60, 25_000_000), -3)
+    if pid in {"PROD-LOAN-PL", "PROD-LOAN-OD"}:
+        return round(min(income * 10, 4_000_000), -3)
+    if pid in {"PROD-CARD-PREM", "PROD-CARD-CB"}:
+        return round(min(income * 3, 1_500_000), -3)
+    if pid in {"PROD-INV-SIP", "PROD-INV-FD"}:
+        return round(balance * 0.3, -3)
+    return round(income * 6, -3)
+
+
+def _next_action(c: CandidateRecord) -> tuple[str, int]:
+    """Concrete next step + priority (1 = act now ... 3 = nurture)."""
+    if c.escalate or c.churn_risk:
+        return "Call within 48h — retention priority", 1
+    if c.propensity_score >= 0.6:
+        return "Message today — high conversion intent", 1
+    if c.propensity_score >= 0.4:
+        return "Reach out this week", 2
+    return "Add to nurture pipeline", 3
+
+
+def _fmt_inr(v: float | None) -> str:
+    if not v:
+        return ""
+    if v >= 10_000_000:
+        return f"~₹{v / 10_000_000:.1f}Cr"
+    if v >= 100_000:
+        return f"~₹{v / 100_000:.1f}L"
+    return f"~₹{v / 1_000:.0f}k"
+
+
+def _fallback_summary(candidates: list[CandidateRecord]) -> str:
+    top = candidates[:3]
+    lines: list[str] = []
+    for c in top:
+        signal = (c.top_features[0].get("rationale") if c.top_features else "") or "strong value and propensity"
+        opp = _fmt_inr(c.opportunity_value)
+        opp_clause = f" ({opp} opportunity)" if opp else ""
+        lines.append(
+            f"{c.name} ({c.city}) — {c.recommended_product_name}{opp_clause}: {signal} "
+            f"→ {c.next_action}"
+        )
+    flagged = [c.name for c in candidates if c.escalate]
+    body = "Your priority calls:\n- " + "\n- ".join(lines)
+    if flagged:
+        body += f"\nRetention watch: {', '.join(flagged[:3])}."
+    body += "\nEach has an explainable score and a ready-to-send WhatsApp draft on the right."
+    return body

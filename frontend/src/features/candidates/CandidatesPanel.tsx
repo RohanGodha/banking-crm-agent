@@ -1,7 +1,7 @@
 import { useUi } from '@/store/uiStore';
 import { inr, pct, truncate } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { MapPin, ShoppingBag, Zap, Users, AlertTriangle } from 'lucide-react';
+import { MapPin, ShoppingBag, Zap, Users, AlertTriangle, TrendingUp, ArrowRight } from 'lucide-react';
 
 const SEGMENT_LABEL: Record<string, string> = {
   hnw: 'HNW',
@@ -79,6 +79,27 @@ export function CandidatesPanel() {
               <div className="mt-2 text-[11px] text-text-muted flex items-start gap-1">
                 <Zap size={10} className="mt-0.5 text-accent-glow" />
                 <span>{truncate(c.top_features[0].rationale, 88)}</span>
+              </div>
+            )}
+
+            {(c.opportunity_value || c.next_action) && (
+              <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-bg-soft/70 border border-border px-2 py-1.5">
+                {c.opportunity_value ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-positive">
+                    <TrendingUp size={11} />
+                    {inr(c.opportunity_value, { compact: true })}
+                    <span className="text-text-dim font-normal">opp.</span>
+                  </span>
+                ) : <span />}
+                {c.next_action && (
+                  <span className={cn(
+                    'inline-flex items-center gap-1 text-[10px] font-medium',
+                    c.priority === 1 ? 'text-warning' : 'text-text-muted',
+                  )}>
+                    <ArrowRight size={10} />
+                    {c.next_action}
+                  </span>
+                )}
               </div>
             )}
 

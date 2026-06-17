@@ -18,7 +18,14 @@ async def run_faq(state: AgentState) -> AgentState:
         temperature=0.2,
         max_tokens=260,
     )
-    state.final_summary = resp.text.strip()
+    text = resp.text.strip()
+    if len(text) < 15:
+        text = (
+            "I help you find high-value customers, score their likelihood to convert, recommend "
+            "a suitable product, and draft compliance-checked WhatsApp outreach. Try: \"Find "
+            "high-value customers for a personal loan and draft messages.\""
+        )
+    state.final_summary = text
     state.emit(TraceEvent(
         event="synth",
         data={"summary": state.final_summary, "candidate_count": 0, "mode": "faq"},

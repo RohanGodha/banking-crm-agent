@@ -70,6 +70,9 @@ export interface CandidateRecord {
   sentiment?: 'positive' | 'neutral' | 'negative';
   escalate?: boolean;
   churn_risk?: boolean;
+  opportunity_value?: number | null;
+  next_action?: string;
+  priority?: number;
 }
 
 export interface DraftRecord {

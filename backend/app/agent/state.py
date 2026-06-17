@@ -67,6 +67,10 @@ class CandidateRecord(BaseModel):
     sentiment: str = "neutral"          # positive | neutral | negative
     escalate: bool = False              # flag for priority human attention
     churn_risk: bool = False
+    # Action layer: estimated opportunity size and the concrete next step
+    opportunity_value: float | None = None
+    next_action: str = ""
+    priority: int = 3                   # 1 = act now, 3 = nurture
 
 
 class DraftRecord(BaseModel):

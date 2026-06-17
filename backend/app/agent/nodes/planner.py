@@ -10,6 +10,11 @@ from app.observability import get_logger
 
 logger = get_logger(__name__)
 
+_VALID_PRODUCTS = {
+    "PROD-LOAN-PL", "PROD-LOAN-HL", "PROD-LOAN-OD",
+    "PROD-CARD-PREM", "PROD-CARD-CB", "PROD-INV-SIP", "PROD-INV-FD",
+}
+
 
 def _load_system() -> str:
     return planner_prompt()
@@ -62,9 +67,15 @@ def _coerce_plan(raw: dict[str, Any]) -> Plan:
     else:
         cf = None
 
+    # Default to a personal loan when the planner leaves the product unset, so
+    # downstream scoring/recommendation always has a concrete target.
+    target = raw.get("target_product")
+    if not (isinstance(target, str) and target.strip() in _VALID_PRODUCTS):
+        target = "PROD-LOAN-PL"
+
     return Plan(
         intent=raw.get("intent", "find_high_value_customers"),
-        target_product=raw.get("target_product"),
+        target_product=target,
         city_filter=cf,
         tone=raw.get("tone", "professional"),
         language=raw.get("language", "English") or "English",

@@ -7,7 +7,7 @@ import uuid
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sse_starlette.sse import EventSourceResponse
 
 from app.agent import AgentState, run_agent
@@ -21,6 +21,14 @@ class ChatStreamIn(BaseModel):
     session_id: str | None = None
     rm_query: str
     rm_name: str = "Rohan"
+
+    @field_validator("rm_query", mode="before")
+    @classmethod
+    def _clean_query(cls, v: object) -> str:
+        s = (v if isinstance(v, str) else "").strip()
+        if not s:
+            raise ValueError("rm_query must not be empty")
+        return s[:2000]
 
 
 async def _ensure_session(session_id: str | None, query: str) -> str:
