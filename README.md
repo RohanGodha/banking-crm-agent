@@ -14,15 +14,32 @@
 2. [Architecture diagram](#2-architecture-diagram)
 3. [Execution flow](#3-execution-flow)
 4. [AI patterns used](#4-ai-patterns-used)
-5. [Tool design](#5-tool-design)
-6. [Key design decisions](#6-key-design-decisions)
-7. [Trade-offs and limitations](#7-trade-offs-and-limitations)
-8. [Project structure](#8-project-structure)
-9. [Setup and run](#9-setup-and-run)
-10. [Deployment (free-tier)](#10-deployment-free-tier)
-11. [Demo scenarios](#11-demo-scenarios)
-12. [Alignment with the assignment + role](#12-alignment-with-the-assignment--role)
-13. [Future work](#13-future-work)
+5. [Prompt engineering](#5-prompt-engineering)
+6. [Frontend & UX](#6-frontend--ux)
+7. [Tool design](#7-tool-design)
+8. [Key design decisions](#8-key-design-decisions)
+9. [Trade-offs and limitations](#9-trade-offs-and-limitations)
+10. [Project structure](#10-project-structure)
+11. [Setup and run](#11-setup-and-run)
+12. [Deployment (free-tier)](#12-deployment-free-tier)
+13. [Demo scenarios](#13-demo-scenarios)
+14. [Alignment with the assignment + role](#14-alignment-with-the-assignment--role)
+15. [Future work](#15-future-work)
+
+> **Live demo** · Frontend: <https://banking-crm-agent.vercel.app> · Backend: <https://banking-crm-agent.onrender.com> · Password: `shared`
+
+---
+
+## What's new (latest)
+
+Most recent iteration focused on production polish, prompt robustness, and a real outreach path:
+
+- **Light / dark theme switch** — CSS-variable token system, header + login toggle, persists to `localStorage`, follows OS preference, no flash on load. D3 visuals are theme-aware.
+- **100% responsive UI (25+ improvements)** — mobile-first layout with a bottom tab bar (Chats / Copilot / Candidates), full 3-column workspace at `lg+`, fluid typography, safe-area insets for notched phones, accessible focus rings, `prefers-reduced-motion` support, and consistent Title-Case copy.
+- **"Send on WhatsApp"** — the draft preview now opens **WhatsApp Web** with the message pre-filled (`web.whatsapp.com/send`); the RM reviews and presses send (human-in-the-loop). Demo numbers are mapped per customer via the `VITE_DEMO_PHONES` env var (kept out of the repo).
+- **Few-shot Planner prompt** — two complete worked example plans (acquisition + retention) plus an explicit *“never emit `0` for unused numeric filters”* rule. Closes the last zero-shot gap and hardens plan generation.
+- **Free-tier resilience** — token-bucket rate limiters on Groq (24 RPM) and Gemini (36 RPM) + one retry per provider before falling back, so parallel draft generation doesn't silently degrade to the mock under burst load. The `fallback_reason` is now surfaced in the API/trace when degradation happens.
+- **Bug fixes** — `max_age=0` (and similar) no longer wipe out query results (sanitised in `query_customers` *and* discouraged in the prompt); plan-level `city_filter` is reliably injected into the query step so follow-ups like “now only Bangalore” actually filter.
 
 ---
 
@@ -219,7 +236,42 @@ All prompts live in a single versioned registry: `app/agent/prompts.py` (`SYSTEM
 
 ---
 
-## 5. Tool design
+## 5. Prompt engineering
+
+All prompts live in one versioned registry — `app/agent/prompts.py` (plus the larger node prompts as Markdown in `app/agent/prompts/`). Each prompting technique is matched to the task that needs it:
+
+| Technique | Where it's used | Why there |
+|---|---|---|
+| **System / persona prompt** | `SYSTEM_PROMPT` — shared base persona ("You are RM Copilot…") | Consistent voice + guardrails across every node |
+| **Role prompting** | Per-node roles — "You are the **Planner**", "the **Critic**", WhatsApp "experienced Indian banking RM" | Focuses each LLM call on one job |
+| **Few-shot** | `FOLLOW_UP_PROMPT` (2 examples), `INTENT_PROMPT` (per-class examples), **`PLANNER` (2 full worked plans)** | Rewriting, classification, and planning are far more reliable with exemplars |
+| **Zero-shot** | `CRITIC`, `SYNTHESIZER`, `GUARDRAIL`, `FAQ` | Clear instructions + constraints are enough; examples would just add tokens |
+| **Structured output (JSON-mode)** | `INTENT`, `PLANNER`, `CRITIC`, `FOLLOW_UP` | Output is consumed by deterministic code, so strict JSON schemas are enforced |
+| **Task decomposition (plan-and-execute)** | `PLANNER` | Turns a natural-language ask into a typed multi-step tool plan |
+| **RAG / grounding** | `FAQ_PROMPT` (KB injected), `WHATSAPP` (context-grounded), `SYNTHESIZER` (candidate list verbatim) | Stops hallucination; answers are tied to real data |
+| **Reflection / self-critique** | `CRITIC_PROMPT` | Evaluates each tool result and decides pass / replan |
+| **Router / classification** | `INTENT_PROMPT` | Routes every message into one of 5 paths before any work happens |
+| **Guardrail / refusal** | `GUARDRAIL_PROMPT` + negative constraints ("Never invent numbers") everywhere | Safe out-of-scope declines; BFSI safety |
+| **Output constraints** | Word limits (≤90/120/25), "no emojis", anti-placeholder rules | Predictable, clean, RM-ready output |
+
+The Planner prompt carries an explicit hardening rule learned from a real bug: **never emit `0` for an unused numeric filter** (a `max_age: 0` once silently returned zero customers) — enforced both in the prompt and sanitised in the `query_customers` tool (defense-in-depth).
+
+---
+
+## 6. Frontend & UX
+
+React + Vite + Tailwind, Zustand store, SSE streaming. Recent UX work:
+
+- **Light / dark theme** — color tokens are CSS variables (`--c-*`) swapped per theme; a `ThemeToggle` in the header and login; persisted to `localStorage`; follows the OS preference until the user chooses; no flash on load (inline pre-paint script). D3 visuals read the active theme's colors.
+- **100% responsive** — mobile-first single-pane layout with a **bottom tab bar** (Chats / Copilot / Candidates), expanding to the full 3-column workspace at `lg+`; fluid typography via `clamp()`; safe-area insets (`env(safe-area-inset-*)`) for notched phones; thinner scrollbars on touch; drawers go full-width on mobile.
+- **Accessibility** — visible `:focus-visible` rings, `prefers-reduced-motion` support, ARIA labels on nav/toggle.
+- **Live agent visuals** — a D3 pipeline (Intent→Plan→Retrieve→Critic→Synthesize→Draft) animates as events stream; a D3 "thinking" loader; a collapsible reasoning trace.
+- **WhatsApp outreach** — draft preview with edit, copy, and **Send on WhatsApp** (opens WhatsApp Web pre-filled; RM presses send). Per-customer demo numbers come from `VITE_DEMO_PHONES` (never committed).
+- **Consistent copy** — Title-Cased labels throughout; fixed page title and meta.
+
+---
+
+## 7. Tool design
 
 | Tool                                | Purpose                                                      | Input fields                                                                                       |
 | ----------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
@@ -236,7 +288,7 @@ All schemas are introspectable at `GET /tools`. Every tool returns a `latency_ms
 
 ---
 
-## 6. Key design decisions
+## 8. Key design decisions
 
 | Decision                                                                                  | Why                                                                                                                                                                  |
 | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -251,19 +303,20 @@ All schemas are introspectable at `GET /tools`. Every tool returns a `latency_ms
 
 ---
 
-## 7. Trade-offs and limitations
+## 9. Trade-offs and limitations
 
 - **Heuristic scoring vs. trained ML:** weighted logistic regressions are auditable and tuneable but won't match a GBM trained on labelled outcomes. Chosen for **explainability + reviewer reproducibility**; production would add a `MLScorer` adapter behind the same interface.
 - **Synthetic seed data:** 500 Faker customers + 5 hand-crafted hero personas. Real interaction notes would make the RAG more interesting.
 - **Single-tenant, no SSO:** scope intentionally limited to a take-home build. The hexagonal layout makes adding tenants straightforward.
-- **No real WhatsApp send:** stops at draft preview. Twilio adapter is documented in [Future work](#13-future-work).
+- **WhatsApp = click-to-send, not programmatic:** the "Send on WhatsApp" button opens WhatsApp Web with the message pre-filled (`web.whatsapp.com/send`) — the RM reviews and presses send (intentional human-in-the-loop). Fully automated sending via the Twilio / Meta Cloud API behind a `MessageChannel` port is documented in [Future work](#15-future-work). Demo numbers are mapped per customer via `VITE_DEMO_PHONES`; without it, hero customers use synthetic seed numbers (WhatsApp may show "not on WhatsApp").
+- **Free-tier LLM rate limits:** under heavy back-to-back use, Groq/Gemini free quotas can throttle. Token-bucket limiters (Groq 24 RPM, Gemini 36 RPM) + one retry per provider smooth bursts, and the router degrades gracefully to the deterministic mock (never crashes). When that happens the `fallback_reason` is surfaced in the trace/API.
 - **Render free-tier cold start (~50s):** mitigated by self-ping + cron-job.org. First request after a cold start shows a "warming up" splash.
 - **Databricks Free warehouse cold start (~30s):** mitigated by the 5s timeout + 60s circuit breaker that fails over to SQLite. Demo never breaks.
 - **LangGraph package not strictly required:** the agent uses an equivalent hand-rolled async DAG to get tight SSE control. LangGraph is included as a dependency and the nodes are reusable inside a `StateGraph` should we want runtime hot-swapping.
 
 ---
 
-## 8. Project structure
+## 10. Project structure
 
 ```
 banking-crm-agent/
@@ -311,7 +364,8 @@ banking-crm-agent/
 │   ├── execution-flow.md
 │   ├── ai-patterns.md
 │   ├── tradeoffs.md
-│   └── demo-script.md
+│   ├── demo-script.md
+│   └── video-script.md             # beat-by-beat recording script
 ├── .github/workflows/                 # backend-ci, frontend-ci
 ├── docker-compose.yml
 ├── render.yaml
@@ -321,9 +375,9 @@ banking-crm-agent/
 
 ---
 
-## 9. Setup and run
+## 11. Setup and run
 
-### 9.1 Local — fastest path (offline, mock LLM, no API keys)
+### 11.1 Local — fastest path (offline, mock LLM, no API keys)
 
 ```bash
 # 1) Backend
@@ -348,7 +402,16 @@ npm run dev
 
 Open <http://localhost:5173>, sign in with password **`shared`**, and ask one of the three quick-prompts.
 
-### 9.2 With real LLMs
+**Optional — make "Send on WhatsApp" open a real chat:** copy `frontend/.env.example` to `frontend/.env.local` and map demo customers (by first name) to real test numbers:
+
+```env
+# digits only, with country code, no "+"/spaces
+VITE_DEMO_PHONES={"Priya":"919876543210","Ananya":"919812345678"}
+```
+
+`.env.local` is gitignored, so real numbers never reach the repo. Be logged into WhatsApp Web in the same browser. (Theme: the light/dark toggle is in the header and login — persists automatically.)
+
+### 11.2 With real LLMs
 
 Create `backend/.env`:
 
@@ -360,13 +423,13 @@ GROQ_API_KEY=...     # https://console.groq.com  (optional but recommended for f
 
 Re-run uvicorn. The `/status` endpoint and the top bar of the UI show which providers are active.
 
-### 9.3 Docker (single-command local stack)
+### 11.3 Docker (single-command local stack)
 
 ```bash
 docker compose up --build
 ```
 
-### 9.4 Quick verification
+### 11.4 Quick verification
 
 ```bash
 # Smoke tests
@@ -379,11 +442,11 @@ Both scripts run end-to-end against the mock LLM with seeded data and assert the
 
 ---
 
-## 10. Deployment (free-tier)
+## 12. Deployment (free-tier)
 
 | Layer    | Service           | Notes                                                                                       |
 | -------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| Frontend | Vercel            | Connect repo, set `VITE_API_URL`, deploy. `vercel.json` already configured.                 |
+| Frontend | Vercel            | Connect repo, set `VITE_API_URL` (and optionally `VITE_DEMO_PHONES` for live WhatsApp send), deploy. `vercel.json` already configured. Env vars are build-time — redeploy after changing them. |
 | Backend  | Render Web Service (Free) | Use `render.yaml` blueprint; set env vars in dashboard. Ephemeral FS — `bootstrap()` reseeds deterministically on each boot. |
 | Keep-alive | cron-job.org    | Hit `https://<your-render>.onrender.com/healthz` every 10 min.                              |
 | Warehouse | Databricks Free Edition | Follow `databricks/README.md`. Optional — SQLite fallback ensures nothing breaks. |
@@ -397,7 +460,7 @@ Both scripts run end-to-end against the mock LLM with seeded data and assert the
 
 ---
 
-## 11. Demo scenarios
+## 13. Demo scenarios
 
 Three scenarios scripted for the 5–10 min video. Each shows a different facet:
 
@@ -411,7 +474,7 @@ Full script in [`docs/demo-script.md`](docs/demo-script.md).
 
 ---
 
-## 12. Alignment with the assignment + role
+## 14. Alignment with the assignment + role
 
 ### Assignment rubric (`Take-Home Assignment_ Agentic AI for Banking CRM-1.pdf`)
 
@@ -439,15 +502,17 @@ Full script in [`docs/demo-script.md`](docs/demo-script.md).
 
 ---
 
-## 13. Future work
+## 15. Future work
 
+- **Fully automated WhatsApp send** via Twilio / Meta Cloud API behind a `MessageChannel` port (today it's click-to-send via WhatsApp Web — human-in-the-loop).
 - **Trained ML scorer** (gradient-boosted) behind the same `Scorer` interface; A/B against the heuristic baseline.
-- **Real WhatsApp send** via Twilio's Business API behind a `MessageChannel` port.
 - **Multi-tenant** with per-RM auth (JWT + refresh) and row-level security in Databricks.
 - **Vector-search inside Databricks** (Mosaic AI Vector Search) once it's free-tier eligible — removes the local Chroma dependency.
 - **Distributed tracing** (OTLP → Honeycomb free tier) for production observability beyond the local `agent_traces` table.
-- **Multilingual drafts** (Hindi/Tamil/Marathi) with language detection + per-language compliance dictionaries.
+- **Per-language compliance dictionaries** — multilingual drafts already ship (planner detects the language and the generator writes in it); next is language-specific number/term grounding.
 - **Reverse channel** — when the customer replies on WhatsApp, classify intent and surface to the RM with a suggested next step.
+
+> Already shipped this iteration: light/dark theme, 100% responsive UI, "Send on WhatsApp" (click-to-send), few-shot Planner, token-bucket rate limiting + graceful fallback, and the `max_age=0` / `city_filter` fixes — see [What's new](#whats-new-latest).
 
 ---
 
