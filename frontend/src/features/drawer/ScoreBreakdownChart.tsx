@@ -2,20 +2,21 @@ import type { ScoreBreakdown } from '@/lib/types';
 import { cn } from '@/lib/cn';
 
 export function ScoreBreakdownChart({ features }: { features: ScoreBreakdown[] }) {
-  const sliced = features.slice(0, 5);
+  const sliced = (features || []).slice(0, 5);
   if (sliced.length === 0)
     return (
       <p className="text-xs text-text-dim">No feature contributions returned.</p>
     );
-  const maxAbs = Math.max(...sliced.map((f) => Math.abs(f.contribution))) || 1;
+  const maxAbs = Math.max(...sliced.map((f) => Math.abs(Number(f.contribution) || 0))) || 1;
   return (
     <div className="space-y-2">
-      {sliced.map((f) => {
-        const widthPct = Math.min(100, (Math.abs(f.contribution) / maxAbs) * 100);
+      {sliced.map((f, i) => {
+        const contribution = Number(f.contribution) || 0;
+        const widthPct = Math.min(100, (Math.abs(contribution) / maxAbs) * 100);
         const isPos = f.direction === 'positive';
         const isNeg = f.direction === 'negative';
         return (
-          <div key={f.feature} className="text-[12px]">
+          <div key={f.feature || i} className="text-[12px]">
             <div className="flex items-center justify-between mb-0.5">
               <span className="text-text">{prettyFeature(f.feature)}</span>
               <span
@@ -24,8 +25,8 @@ export function ScoreBreakdownChart({ features }: { features: ScoreBreakdown[] }
                   isPos ? 'text-positive' : isNeg ? 'text-danger' : 'text-text-muted',
                 )}
               >
-                {f.contribution >= 0 ? '+' : ''}
-                {f.contribution.toFixed(2)}
+                {contribution >= 0 ? '+' : ''}
+                {contribution.toFixed(2)}
               </span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-bg-soft overflow-hidden">
@@ -47,7 +48,8 @@ export function ScoreBreakdownChart({ features }: { features: ScoreBreakdown[] }
   );
 }
 
-function prettyFeature(s: string): string {
+function prettyFeature(s?: string): string {
+  if (!s) return '—';
   return s
     .replace(/_/g, ' ')
     .replace(/(^|\s)([a-z])/g, (_, p, c) => p + c.toUpperCase());
