@@ -7,6 +7,7 @@ import { X, Phone, MapPin, Briefcase, ShieldCheck, ListChecks, Wallet, Calendar,
 import { WhatsAppPreview } from './WhatsAppPreview';
 import { ScoreBreakdownChart } from './ScoreBreakdownChart';
 import { D3Loader } from '@/features/trace/D3Loader';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export function CustomerDrawer({ customerId }: { customerId: string }) {
   const close = useUi((s) => () => s.setSelectedCustomerId(null));
@@ -55,6 +56,7 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+          <ErrorBoundary label="Customer details">
           {loading && <Skeleton />}
           {err && (
             <div className="text-sm text-danger flex items-center gap-2">
@@ -66,7 +68,9 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
               <ProfileBlock customer={data.customer} source={data.source} candidate={candidate} />
               {candidate && (
                 <Section title="Score Breakdown" subtitle="Top features contributing to ranking">
-                  <ScoreBreakdownChart features={candidate.top_features} />
+                  <ErrorBoundary compact label="Score breakdown">
+                    <ScoreBreakdownChart features={candidate.top_features} />
+                  </ErrorBoundary>
                   <div className="mt-3 text-xs text-text-muted leading-relaxed">
                     {candidate.rationale}
                   </div>
@@ -75,11 +79,11 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
               {draft && (
                 <Section
                   title="WhatsApp Draft"
-                  subtitle={draft.compliance.ok
+                  subtitle={draft.compliance?.ok
                     ? 'All numbers grounded · ready to send'
-                    : `${(draft.compliance.ungrounded || []).length} ungrounded number(s) stripped`}
+                    : `${(draft.compliance?.ungrounded || []).length} ungrounded number(s) stripped`}
                   badge={
-                    draft.compliance.ok ? (
+                    draft.compliance?.ok ? (
                       <span className="badge-pos">
                         <CheckCircle2 size={11} /> Compliance OK
                       </span>
@@ -90,7 +94,9 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
                     )
                   }
                 >
-                  <WhatsAppPreview customer={data.customer} draft={draft} />
+                  <ErrorBoundary compact label="WhatsApp draft">
+                    <WhatsAppPreview customer={data.customer} draft={draft} />
+                  </ErrorBoundary>
                 </Section>
               )}
               <Section title="Holdings" subtitle={`${data.holdings.length} active`}>
@@ -145,6 +151,7 @@ export function CustomerDrawer({ customerId }: { customerId: string }) {
               </Section>
             </>
           )}
+          </ErrorBoundary>
         </div>
       </aside>
     </>

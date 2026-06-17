@@ -4,6 +4,7 @@ import { useAgentStream } from '@/hooks/useAgentStream';
 import { TracePanel } from '@/features/trace/TracePanel';
 import { AgentFlowD3 } from '@/features/trace/AgentFlowD3';
 import { D3Loader } from '@/features/trace/D3Loader';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ArrowUp, Sparkles, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -54,12 +55,18 @@ export function ChatPane() {
               <D3Loader size={20} />
               <span className="text-xs text-text-muted">Agent is working…</span>
             </div>
-            <AgentFlowD3 />
+            <ErrorBoundary compact label="Pipeline view">
+              <AgentFlowD3 />
+            </ErrorBoundary>
           </div>
         )}
 
         {/* Trace panel — the current run's reasoning (events cleared each run) */}
-        {ui.events.length > 0 && <TracePanel />}
+        {ui.events.length > 0 && (
+          <ErrorBoundary compact label="Trace">
+            <TracePanel />
+          </ErrorBoundary>
+        )}
 
         {/* Live assistant preview while streaming (before the final turn is committed) */}
         {ui.isStreaming && ui.summary && <AssistantBubble text={ui.summary} />}

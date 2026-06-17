@@ -10,6 +10,7 @@ import { GuidePanel } from '@/features/guide/GuidePanel';
 import { useAgentStream } from '@/hooks/useAgentStream';
 import { useTheme } from '@/hooks/useTheme';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { cn } from '@/lib/cn';
 
 type MobilePane = 'sessions' | 'chat' | 'candidates';
@@ -94,7 +95,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
             mobilePane === 'sessions' ? 'block' : 'hidden',
           )}
         >
-          <SessionsSidebar />
+          <ErrorBoundary label="Conversations">
+            <SessionsSidebar />
+          </ErrorBoundary>
         </aside>
 
         <section
@@ -103,7 +106,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
             mobilePane === 'chat' ? 'block' : 'hidden',
           )}
         >
-          <ChatPane />
+          <ErrorBoundary label="Chat">
+            <ChatPane />
+          </ErrorBoundary>
         </section>
 
         <aside
@@ -112,7 +117,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
             mobilePane === 'candidates' ? 'block' : 'hidden',
           )}
         >
-          <CandidatesPanel />
+          <ErrorBoundary label="Candidates">
+            <CandidatesPanel />
+          </ErrorBoundary>
         </aside>
       </main>
 
@@ -138,15 +145,21 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         />
       </nav>
 
-      {selected && <CustomerDrawer customerId={selected} />}
+      {selected && (
+        <ErrorBoundary label="Customer 360" resetKey={selected}>
+          <CustomerDrawer customerId={selected} />
+        </ErrorBoundary>
+      )}
       {guideOpen && (
-        <GuidePanel
-          onClose={() => setGuideOpen(false)}
-          onRunPrompt={(q) => {
-            setMobilePane('chat');
-            run({ query: q, sessionId });
-          }}
-        />
+        <ErrorBoundary label="Guide">
+          <GuidePanel
+            onClose={() => setGuideOpen(false)}
+            onRunPrompt={(q) => {
+              setMobilePane('chat');
+              run({ query: q, sessionId });
+            }}
+          />
+        </ErrorBoundary>
       )}
     </div>
   );
