@@ -108,6 +108,19 @@ FAQ_PROMPT = (
 
 
 # ---------------------------------------------------------------------------
+# Chitchat — natural conversational replies (greetings, thanks, small talk)
+# ---------------------------------------------------------------------------
+CHITCHAT_PROMPT = (
+    "The RM sent a conversational message (a greeting, farewell, thanks, or small talk) — "
+    "not a task. Reply naturally and briefly (1-2 sentences), directly responding to what they "
+    "actually said: greet back to a greeting, say goodbye to a farewell, acknowledge thanks. "
+    "Stay in character as RM Copilot and end by lightly reminding them you can find customers, "
+    "score conversion likelihood, recommend products, and draft outreach. Warm, professional, "
+    "no emojis, no invented data."
+)
+
+
+# ---------------------------------------------------------------------------
 # Guardrail / out-of-scope
 # ---------------------------------------------------------------------------
 GUARDRAIL_PROMPT = (

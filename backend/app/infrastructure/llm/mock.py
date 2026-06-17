@@ -73,6 +73,7 @@ class MockLLM(LLMClient):
         "intent":      re.compile(r"route a message from a banking"),
         "follow_up":   re.compile(r"refining their previous request|rewrite their new message"),
         "faq":         re.compile(r"knowledge base"),
+        "chitchat":    re.compile(r"conversational message"),
         "guardrail":   re.compile(r"outside the scope|politely decline"),
         "planner":     re.compile(r"\[node:planner\]|decompose the rm|executable plan"),
         "critic":      re.compile(r"\[node:critic\]|the \*\*critic\*\* node|critic.{0,20}node"),
@@ -90,6 +91,8 @@ class MockLLM(LLMClient):
             return self._intent(u_low)
         if self._NODE_PATTERNS["faq"].search(s):
             return self._faq()
+        if self._NODE_PATTERNS["chitchat"].search(s):
+            return self._chitchat(user)
         if self._NODE_PATTERNS["guardrail"].search(s):
             return self._guardrail()
         if self._NODE_PATTERNS["whatsapp"].search(s):
@@ -133,6 +136,28 @@ class MockLLM(LLMClient):
             "suitable product, and draft compliance-checked WhatsApp outreach for your review. "
             "Try: \"Find affluent customers in Mumbai for a personal loan and draft messages.\""
         )
+        return text, {"summary": text}
+
+    def _chitchat(self, user: str) -> tuple[str, dict[str, Any]]:
+        name = "Rohan"
+        m = re.search(r"rm name:\s*([A-Za-z]+)", user, re.IGNORECASE)
+        if m:
+            name = m.group(1).capitalize()
+        said = ""
+        sm = re.search(r"rm just said:\s*(.+)", user, re.IGNORECASE | re.DOTALL)
+        if sm:
+            said = sm.group(1).lower()
+        if re.search(r"\b(bye|goodbye|see (you|ya)|cya|take care|good ?night|later)\b", said):
+            text = f"See you, {name}. I'll be here when you need the next set of customers to target."
+        elif re.search(r"\b(thanks?|thank you|thx|cheers)\b", said):
+            text = f"Anytime, {name}. Tell me the segment or product whenever you're ready."
+        elif re.search(r"\b(how are you|how'?s it going|what'?s up|sup)\b", said):
+            text = f"Ready to go, {name}. Point me at a segment or product and I'll find and score the customers."
+        else:
+            text = (
+                f"Hi {name}! I'm RM Copilot. Tell me which customers to target and I'll find them, "
+                "score conversion likelihood, recommend a product, and draft WhatsApp outreach."
+            )
         return text, {"summary": text}
 
     def _guardrail(self) -> tuple[str, dict[str, Any]]:

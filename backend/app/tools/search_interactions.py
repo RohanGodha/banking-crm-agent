@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.application.tool_registry import tool
 from app.infrastructure.rag import get_retriever
@@ -13,6 +13,11 @@ class SearchInteractionsIn(BaseModel):
     query: str
     k: int = 5
     customer_id: str | None = None
+
+    @field_validator("customer_id", mode="before")
+    @classmethod
+    def _only_string(cls, v: Any) -> Any:
+        return v if isinstance(v, str) else None
 
 
 class SearchInteractionsOut(BaseModel):

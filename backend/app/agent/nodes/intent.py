@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from app.agent.prompts import GUARDRAIL_PROMPT, INTENT_PROMPT, SYSTEM_PROMPT
+from app.agent.prompts import CHITCHAT_PROMPT, GUARDRAIL_PROMPT, INTENT_PROMPT, SYSTEM_PROMPT
 from app.agent.state import AgentState, TraceEvent
 from app.infrastructure.llm import LLMMessage, get_llm_router
 
@@ -111,16 +111,37 @@ async def classify_intent(state: AgentState) -> str:
 
 async def run_chitchat(state: AgentState) -> AgentState:
     name = state.rm_name or "Rohan"
-    text = (
-        f"Hi {name}! I'm RM Copilot. Tell me which customers to target and I'll find them, "
-        "score their likelihood to convert, recommend a product, and draft WhatsApp outreach. "
-        "For example: \"Find high-value customers likely to convert for a personal loan and draft messages.\""
-    )
-    t = (state.rm_query or "").lower()
-    if re.match(r"^\s*(thanks?|thank you|ok(ay)?|cool|nice)", t):
-        text = f"Anytime, {name}. Whenever you're ready, tell me the segment or product to target."
+    router = get_llm_router()
+    try:
+        convo = "\n".join(f"{h['role']}: {h['content']}" for h in state.history[-4:])
+        resp = await router.complete(
+            kind="reasoning",
+            messages=[
+                LLMMessage(role="system", content=f"{SYSTEM_PROMPT}\n\n{CHITCHAT_PROMPT}"),
+                LLMMessage(role="user", content=(
+                    f"RM name: {name}\n"
+                    f"Recent conversation:\n{convo or '(none)'}\n\n"
+                    f"RM just said: {state.rm_query}"
+                )),
+            ],
+            temperature=0.7,
+            max_tokens=120,
+        )
+        text = resp.text.strip()
+        route = resp.meta.get("route_used", resp.provider)
+    except Exception:  # noqa: BLE001
+        text = (
+            f"Hi {name}! I'm RM Copilot. Tell me which customers to target and I'll find them, "
+            "score their likelihood to convert, recommend a product, and draft WhatsApp outreach."
+        )
+        route = None
+
     state.final_summary = text
-    state.emit(TraceEvent(event="synth", data={"summary": text, "candidate_count": 0, "mode": "chitchat"}))
+    state.emit(TraceEvent(
+        event="synth",
+        data={"summary": text, "candidate_count": 0, "mode": "chitchat"},
+        llm_route=route,
+    ))
     return state
 
 
