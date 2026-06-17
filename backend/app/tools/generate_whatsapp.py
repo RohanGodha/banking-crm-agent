@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.agent.prompts import WHATSAPP_PROMPT as _SYSTEM_PROMPT
 from app.application.tool_registry import tool
 from app.domain import ScoreBreakdown
 from app.infrastructure.datasource import get_datasource
@@ -28,10 +29,7 @@ class GenerateWhatsAppOut(BaseModel):
     compliance: dict[str, Any]
     llm_route: str
     latency_ms: int
-    fallback_reason: str = ""  # populated when generation degraded to mock
-
-
-from app.agent.prompts import WHATSAPP_PROMPT as _SYSTEM_PROMPT
+    fallback_reason: str = ""
 
 
 def _user_prompt(customer: dict[str, Any], product: dict[str, Any], top_features: list[ScoreBreakdown], tone: str, rm_name: str, language: str = "English") -> str:

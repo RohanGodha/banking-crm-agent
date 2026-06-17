@@ -3,7 +3,7 @@ import { useUi } from '@/store/uiStore';
 import { api } from '@/lib/api';
 import { inr, maskPhone, pct, relTime, truncate, cap } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { X, Phone, MapPin, Briefcase, ShieldCheck, ListChecks, Wallet, Calendar, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
+import { X, Phone, MapPin, Briefcase, Calendar, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
 import { WhatsAppPreview } from './WhatsAppPreview';
 import { ScoreBreakdownChart } from './ScoreBreakdownChart';
 import { D3Loader } from '@/features/trace/D3Loader';

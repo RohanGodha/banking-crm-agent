@@ -5,9 +5,7 @@ the agent can ground messages with citations like  [INT-CUST-HERO-001-3].
 """
 from __future__ import annotations
 
-import asyncio
 import re
-import uuid
 from functools import lru_cache
 from typing import Any
 
@@ -116,7 +114,7 @@ class HybridRetriever:
                 return []
 
         # --- Dense scores ---
-        dense_scores = {i: 0.0 for i in idx_pool}
+        dense_scores = dict.fromkeys(idx_pool, 0.0)
         if self._collection is not None:
             try:
                 router = get_llm_router()
@@ -147,7 +145,7 @@ class HybridRetriever:
         bm25_rank = sorted(idx_pool, key=lambda i: bm25_norm.get(i, 0.0), reverse=True)
 
         K = 60  # standard RRF
-        fused: dict[int, float] = {i: 0.0 for i in idx_pool}
+        fused: dict[int, float] = dict.fromkeys(idx_pool, 0.0)
         for r, idx in enumerate(dense_rank):
             fused[idx] += 1.0 / (K + r)
         for r, idx in enumerate(bm25_rank):

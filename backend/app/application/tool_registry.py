@@ -101,7 +101,7 @@ async def invoke_tool(name: str, raw_args: dict[str, Any]) -> dict[str, Any]:
             "data": result.model_dump() if isinstance(result, BaseModel) else result,
             "latency_ms": int((time.perf_counter() - started) * 1000),
         }
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {
             "ok": False,
             "tool": name,

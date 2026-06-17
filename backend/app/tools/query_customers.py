@@ -62,7 +62,7 @@ async def query_customers(args: QueryCustomersIn) -> QueryCustomersOut:
     res = await ds.find_customers(CustomerFilters(**raw))
 
     if res.rows == 0:
-        relaxed = {**raw, **{k: None for k in _RELAXABLE}}
+        relaxed = {**raw, **dict.fromkeys(_RELAXABLE)}
         res = await ds.find_customers(CustomerFilters(**relaxed))
 
     if res.rows == 0:
