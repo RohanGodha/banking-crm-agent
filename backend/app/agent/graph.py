@@ -14,6 +14,7 @@ from collections.abc import AsyncIterator
 from app.agent.nodes.critic import run_critic
 from app.agent.nodes.faq import run_faq
 from app.agent.nodes.intent import classify_intent, run_chitchat, run_guardrail
+from app.agent.nodes.knowledge import run_knowledge
 from app.agent.nodes.message_generator import run_message_generator
 from app.agent.nodes.planner import run_planner
 from app.agent.nodes.responder import run_responder
@@ -44,11 +45,13 @@ async def run_agent(state: AgentState) -> AsyncIterator[TraceEvent]:
         yield ev
 
     # Non-pipeline routes short-circuit with a single response.
-    if intent in {"chitchat", "faq", "out_of_scope"}:
+    if intent in {"chitchat", "faq", "knowledge", "out_of_scope"}:
         if intent == "chitchat":
             await run_chitchat(state)
         elif intent == "faq":
             await run_faq(state)
+        elif intent == "knowledge":
+            await run_knowledge(state)
         else:
             await run_guardrail(state)
         async for ev in _yield_drain(state):

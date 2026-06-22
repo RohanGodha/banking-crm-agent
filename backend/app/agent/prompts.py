@@ -57,21 +57,25 @@ SYSTEM_PROMPT = (
 INTENT_PROMPT = (
     "You route a message from a banking Relationship Manager to the correct handler.\n"
     "Given the (optional) recent conversation and the new message, output STRICT JSON:\n"
-    '{ "intent": "task" | "follow_up" | "faq" | "chitchat" | "out_of_scope", '
+    '{ "intent": "task" | "follow_up" | "knowledge" | "faq" | "chitchat" | "out_of_scope", '
     '"reason": "<= 12 words" }\n\n'
     "Definitions:\n"
-    "- task: a fresh request to find/score/segment customers or draft outreach "
-    "(e.g. 'find HNW customers for a personal loan').\n"
+    "- task: a fresh request to find/score/segment customers or draft/generate outreach "
+    "(e.g. 'find HNW customers for a personal loan and draft messages').\n"
     "- follow_up: refines or modifies the PREVIOUS task using context "
     "(e.g. 'now only Bangalore', 'make it warmer', 'top 5 only', 'exclude existing cardholders').\n"
-    "- faq: a question about capabilities, products, data, or how the assistant works "
-    "(e.g. 'what products can you recommend?', 'what data do you use?', 'who are you?').\n"
+    "- knowledge: an informational banking question answerable from reference material — RBI "
+    "policies, interest/repo rates, loan/KYC/EMI/foreclosure procedures, CIBIL, eligibility, OR "
+    "a SPECIFIC customer's historical records (their loans, holdings, history). "
+    "Examples: 'what is the home loan LTV limit', 'how does KYC work', 'current repo rate', "
+    "'what loans does Priya have', 'tell me Priya's loan history'. It asks for facts, not an action.\n"
+    "- faq: a question about THIS assistant — its capabilities, what it can do, or who it is "
+    "(e.g. 'what can you do?', 'what products can you recommend?', 'who are you?').\n"
     "- chitchat: greetings, thanks, small talk.\n"
-    "- out_of_scope: anything unrelated to banking CRM / outreach "
-    "(coding, poems, general knowledge, other domains).\n\n"
-    "Rules: If it clearly modifies a prior task, choose follow_up. If ambiguous between "
-    "task and faq, prefer task only when it names customers/products/segments/actions. "
-    "Return JSON only."
+    "- out_of_scope: anything unrelated to banking (coding, poems, other domains).\n\n"
+    "Rules: If it modifies a prior task, choose follow_up. Choose task only when it asks to "
+    "find/score/segment customers or create outreach (action). Choose knowledge for factual "
+    "banking questions or a named customer's historical data. Return JSON only."
 )
 
 

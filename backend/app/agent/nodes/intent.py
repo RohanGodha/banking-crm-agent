@@ -29,7 +29,8 @@ _FOLLOWUP_PATTERNS = re.compile(
 )
 _GREETING_PATTERNS = re.compile(
     r"^\s*(hi|hey|hello|yo|hola|namaste|good (morning|afternoon|evening)|"
-    r"sup|what'?s up|how are you|thanks?|thank you|ok(ay)?|cool|nice)\s*[!.?]*\s*$",
+    r"sup|what'?s up|how are you|thanks?|thank you|ok(ay)?|cool|nice|bye|goodbye)"
+    r"(\s+(there|team|copilot|rm|rohan|buddy|mate|all))?\s*[!.?]*\s*$",
     re.IGNORECASE,
 )
 _FAQ_PATTERNS = re.compile(
@@ -42,8 +43,30 @@ _OUT_OF_SCOPE = re.compile(
     r"translate|stock price|news)\b",
     re.IGNORECASE,
 )
+# Action verbs that mean "run the customer pipeline" — these win over knowledge.
+_ACTION_PATTERNS = re.compile(
+    r"\b(find|identify|pull|segment|shortlist|target|draft|generate|score|"
+    r"recommend|outreach|campaign|cross[- ]?sell|upsell|prospect)\b",
+    re.IGNORECASE,
+)
+# Informational banking questions answerable from the reference knowledge base.
+_KNOWLEDGE_PATTERNS = re.compile(
+    r"\b(rbi|repo rate|reverse repo|crr|slr|bank rate|interest rate|cibil|credit score|"
+    r"kyc|ckyc|v-?cip|ltv|foir|dti|emi|foreclos|prepay|dicgc|priority sector|"
+    r"section 80c|section 24|key facts|kfs|eligibilit|moratorium|penal|"
+    r"how (do|to|does) .*(apply|kyc|loan)|documents? (needed|required)|process of)\b",
+    re.IGNORECASE,
+)
+_PERSONA_HISTORY = re.compile(
+    r"\b(past|previous|existing|active|current)\s+loans?\b"
+    r"|\bloans?\s+(taken|history|held|by|of|for|does)\b"
+    r"|\bwhat\s+loans?\b"
+    r"|'s\s+(loan|loans|credit|holdings?|products?|account|cibil|salary|history|transactions?)\b"
+    r"|\b(loan|credit|repayment|holdings?|products?|account|cibil|salary|transaction)s?\s+(history|record|details?)\b",
+    re.IGNORECASE,
+)
 
-VALID_INTENTS = {"task", "follow_up", "faq", "chitchat", "out_of_scope"}
+VALID_INTENTS = {"task", "follow_up", "knowledge", "faq", "chitchat", "out_of_scope"}
 
 
 def _is_question_about_assistant(t: str) -> bool:
@@ -68,6 +91,12 @@ def _heuristic(text: str, has_history: bool) -> str:
         return "faq"
     if has_history and _FOLLOWUP_PATTERNS.match(t) and not _TASK_PATTERNS.search(t):
         return "follow_up"
+    # Action verbs mean "run the pipeline" → task wins over knowledge.
+    if _ACTION_PATTERNS.search(t):
+        return "task"
+    # Informational banking questions / a named customer's history → knowledge base.
+    if _KNOWLEDGE_PATTERNS.search(t) or _PERSONA_HISTORY.search(t):
+        return "knowledge"
     if _TASK_PATTERNS.search(t):
         if has_history and _FOLLOWUP_PATTERNS.match(t):
             return "follow_up"

@@ -113,12 +113,18 @@ class MockLLM(LLMClient):
         # Mirror the node heuristic so offline classification is sensible.
         new_msg = user_lower.split("new message:")[-1]
         data = {"intent": "task", "reason": "mock"}
-        if re.search(r"\b(you|your)\b", new_msg) and re.search(r"what|which|how|can|who|do you", new_msg):
-            data["intent"] = "faq"
-        elif re.match(r"\s*(hi|hey|hello|thanks|thank you|ok)", new_msg):
+        if re.match(r"\s*(hi|hey|hello|thanks|thank you|ok|bye)", new_msg):
             data["intent"] = "chitchat"
         elif re.search(r"poem|code|weather|joke|movie|recipe", new_msg):
             data["intent"] = "out_of_scope"
+        elif re.search(
+            r"rbi|repo|cibil|kyc|ltv|foir|foreclos|interest rate|past loan|loan history|"
+            r"what loans|loans? (taken|of|for|does)|section 80c|emi",
+            new_msg,
+        ):
+            data["intent"] = "knowledge"
+        elif re.search(r"\b(you|your)\b", new_msg) and re.search(r"what|which|how|can|who|do you", new_msg):
+            data["intent"] = "faq"
         return json.dumps(data), data
 
     def _follow_up(self, user: str) -> tuple[str, dict[str, Any]]:

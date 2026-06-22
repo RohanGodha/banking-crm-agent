@@ -63,6 +63,24 @@ async def run() -> int:
     srcs = kb.sources()
     check("three knowledge sources loaded", len(srcs) == 3, str([s["source"] for s in srcs]))
 
+    # 6. Main-chat routing: knowledge questions must route to the KB, actions to task.
+    from app.agent.nodes.intent import _heuristic
+    routes = {
+        "what is the current repo rate": "knowledge",
+        "what is the home loan LTV limit": "knowledge",
+        "how does the KYC process work": "knowledge",
+        "Tell me past loan taken by Priya": "knowledge",
+        "what loans does Ananya have": "knowledge",
+        "find high-value customers for a personal loan and draft messages": "task",
+        "show me customers with a salary-credit slowdown": "task",
+        "what can you do": "faq",
+        "hi there": "chitchat",
+        "write a poem about Mumbai": "out_of_scope",
+    }
+    for q, expected in routes.items():
+        got = _heuristic(q, False)
+        check(f"route '{q[:34]}' -> {expected}", got == expected, f"got {got}")
+
     if failures:
         print(f"\nKnowledge base test FAILED: {failures}")
         return 1
