@@ -105,4 +105,16 @@ export const api = {
     status: { datasource: string; llm: string; rag: string };
   }>('/meta/capabilities'),
   faqs: () => jfetch<{ count: number; categories: Record<string, { q: string; a: string }[]> }>('/meta/faqs'),
+  knowledgeSources: () => jfetch<{
+    sources: { source: string; sections: string[] }[];
+    suggestions: string[];
+  }>('/knowledge/sources'),
+  knowledgeAsk: (query: string) =>
+    jfetch<{
+      answer: string;
+      sources: string[];
+      excerpts: { source: string; title: string; score: number }[];
+      llm_route: string | null;
+      latency_ms: number;
+    }>('/knowledge/ask', { method: 'POST', body: JSON.stringify({ query }) }, 60000),
 };

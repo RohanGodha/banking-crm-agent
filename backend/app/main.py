@@ -10,6 +10,7 @@ from app.api import auth as auth_router
 from app.api import chat as chat_router
 from app.api import customers as customers_router
 from app.api import health as health_router
+from app.api import knowledge as knowledge_router
 from app.api import meta as meta_router
 from app.api import outreach as outreach_router
 from app.api import sessions as sessions_router
@@ -48,6 +49,7 @@ app.include_router(trace_router.router)
 app.include_router(tools_router.router)
 app.include_router(outreach_router.router)
 app.include_router(meta_router.router)
+app.include_router(knowledge_router.router)
 
 
 @app.on_event("startup")

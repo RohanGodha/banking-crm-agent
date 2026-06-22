@@ -5,8 +5,9 @@ import { CandidatesPanel } from '@/features/candidates/CandidatesPanel';
 import { CustomerDrawer } from '@/features/drawer/CustomerDrawer';
 import { useUi } from '@/store/uiStore';
 import { api } from '@/lib/api';
-import { LogOut, Activity, Server, BookOpen, MessageSquare, Sparkles, Users } from 'lucide-react';
+import { LogOut, Activity, Server, BookOpen, MessageSquare, Sparkles, Users, Library } from 'lucide-react';
 import { GuidePanel } from '@/features/guide/GuidePanel';
+import { KnowledgeModal } from '@/features/knowledge/KnowledgeModal';
 import { useAgentStream } from '@/hooks/useAgentStream';
 import { useTheme } from '@/hooks/useTheme';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -20,6 +21,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const sessionId = useUi((s) => s.sessionId);
   const candidates = useUi((s) => s.candidates);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [kbOpen, setKbOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState<MobilePane>('chat');
   const { theme, toggle } = useTheme();
   const { run } = useAgentStream();
@@ -72,6 +74,14 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
               <span className="badge-accent hidden sm:inline-flex">LLM: {llmLabel}</span>
             </>
           )}
+          <button
+            onClick={() => setKbOpen(true)}
+            className="btn-ghost text-xs px-2 sm:px-3"
+            title="Banking knowledge base — ask about RBI, CIBIL, loans, KYC"
+          >
+            <Library size={13} />
+            <span className="hidden sm:inline">Knowledge</span>
+          </button>
           <button
             onClick={() => setGuideOpen(true)}
             className="btn-ghost text-xs px-2 sm:px-3"
@@ -159,6 +169,11 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
               run({ query: q, sessionId });
             }}
           />
+        </ErrorBoundary>
+      )}
+      {kbOpen && (
+        <ErrorBoundary label="Knowledge Base">
+          <KnowledgeModal onClose={() => setKbOpen(false)} />
         </ErrorBoundary>
       )}
     </div>

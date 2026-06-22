@@ -15,6 +15,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY app ./app
+COPY new_features ./new_features
 # The data dir is created at runtime; bootstrap() seeds SQLite + Chroma on first
 # boot into SQLITE_PATH/CHROMA_DIR (the Render mounted disk in production).
 RUN mkdir -p data
