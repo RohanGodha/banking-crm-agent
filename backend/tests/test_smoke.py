@@ -43,7 +43,7 @@ def main() -> int:
     ids = [c["id"] for c in data["customers"]] + ["CUST-HERO-002", "CUST-HERO-003", "CUST-HERO-004", "CUST-HERO-005"]
     res = asyncio.run(invoke_tool("compute_customer_value", {"customer_ids": ids[:20]}))
     assert res["ok"], res
-    print(f"    OK — top 3 value scores: " +
+    print("    OK — top 3 value scores: " +
           ", ".join(f"{c['customer_id']}={c['value_score']:.2f}" for c in res['data']['customers'][:3]))
 
     print(">>> predict_loan_propensity (PROD-LOAN-PL)…")
@@ -62,7 +62,7 @@ def main() -> int:
     }))
     assert res["ok"], res
     recs = res["data"]["recommendations"]
-    print(f"    OK — top recs: " +
+    print("    OK — top recs: " +
           ", ".join(f"{r['product_id']} ({r['propensity_score']:.2f})" for r in recs))
 
     print(">>> generate_whatsapp_message for Priya (mock LLM)…")

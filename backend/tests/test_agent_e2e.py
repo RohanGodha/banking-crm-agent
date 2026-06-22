@@ -38,10 +38,10 @@ async def run() -> int:
     print(f">>> Drafts:     {len(state.drafts)}")
     print(f">>> Summary ({len(state.final_summary)} chars):")
     print("    " + state.final_summary[:240].replace("\n", " "))
-    print(f"\n>>> Top 3 candidates:")
+    print("\n>>> Top 3 candidates:")
     for c in state.candidates[:3]:
         print(f"  - {c.name:25s} comp={c.composite_score:.2f}  v={c.value_score:.2f}  p={c.propensity_score:.2f}  -> {c.recommended_product_name}")
-    print(f"\n>>> Sample draft (first):")
+    print("\n>>> Sample draft (first):")
     if state.drafts:
         print(f"    {state.drafts[0].message[:280]}")
         print(f"    compliance.ok = {state.drafts[0].compliance.get('ok')}")
