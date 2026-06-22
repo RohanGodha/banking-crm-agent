@@ -100,6 +100,11 @@ class HybridRetriever:
         self._ready = True
         logger.info("HybridRetriever ready with %d chunks.", len(chunks))
 
+    @property
+    def mode(self) -> str:
+        """Actual retrieval mode: dense+lexical when Chroma is loaded, else lexical only."""
+        return "chroma+bm25" if self._collection is not None else "bm25"
+
     async def search(self, query: str, *, k: int = 5, customer_id: str | None = None) -> list[dict[str, Any]]:
         if not self._ready:
             await self.initialise()

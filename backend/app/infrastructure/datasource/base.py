@@ -15,7 +15,7 @@ from app.domain import Customer, CustomerFilters, Product, Transaction
 
 class DataSourceResult(BaseModel):
     """Wraps every DataSource call so the trace can record provenance."""
-    source: str = Field(description="databricks | sqlite | cache")
+    source: str = Field(description="databricks | sqlite | sqlite(failover)")
     latency_ms: int = 0
     rows: int = 0
     data: Any = None

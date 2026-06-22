@@ -21,7 +21,7 @@ class SearchInteractionsIn(BaseModel):
 
 
 class SearchInteractionsOut(BaseModel):
-    source: str = "chroma+bm25"
+    source: str = "bm25"
     matches: list[dict[str, Any]]
     latency_ms: int
 
@@ -40,6 +40,7 @@ async def search_interactions(args: SearchInteractionsIn) -> SearchInteractionsO
     retriever = get_retriever()
     matches = await retriever.search(args.query, k=args.k, customer_id=args.customer_id)
     return SearchInteractionsOut(
+        source=retriever.mode,
         matches=matches,
         latency_ms=int((time.perf_counter() - started) * 1000),
     )
